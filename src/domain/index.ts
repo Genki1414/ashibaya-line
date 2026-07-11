@@ -5,6 +5,7 @@
  */
 export * as shared from "./shared";
 export * as credit from "./credit";
+export * as company from "./company";
 export * as order from "./order";
 export * as work from "./work";
 export * as billing from "./billing";
