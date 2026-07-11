@@ -1,7 +1,7 @@
 import { Company } from "../domain/company";
 import { Project } from "../domain/project";
 import { Transaction, TransactionEvent } from "../domain/transaction";
-import { CompanyId, IsoDate, ProjectId, TransactionId } from "../domain/shared";
+import { CompanyId, DomainEvent, IsoDate, ProjectId, TransactionId } from "../domain/shared";
 
 /**
  * アプリケーション層が依存する永続化ポート。実装（Supabase / インメモリ）は infra 層に置く。
@@ -33,7 +33,7 @@ export interface StoredEvent {
 }
 
 export interface EventStore {
-  append(events: readonly TransactionEvent[]): Promise<void>;
+  append(events: readonly DomainEvent<string, unknown>[]): Promise<void>;
   timelineFor(aggregateId: string): Promise<StoredEvent[]>;
 }
 

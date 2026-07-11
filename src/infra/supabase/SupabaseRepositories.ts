@@ -1,8 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { Company } from "../../domain/company";
 import { Project } from "../../domain/project";
-import { Transaction, TransactionEvent } from "../../domain/transaction";
-import { CompanyId, ProjectId, TransactionId } from "../../domain/shared";
+import { Transaction } from "../../domain/transaction";
+import { CompanyId, DomainEvent, ProjectId, TransactionId } from "../../domain/shared";
 import { CompanyRepository, EventStore, ProjectRepository, StoredEvent, TransactionRepository } from "../../application/ports";
 import {
   CompanyRow,
@@ -95,17 +95,23 @@ export class SupabaseProjectRepository implements ProjectRepository {
   }
 }
 
-interface EventPayloadWithTx {
-  readonly transactionId: string;
+interface EventAggregateRef {
+  readonly transactionId?: string;
+  readonly projectId?: string;
+}
+
+function aggregateIdOf(payload: unknown): string {
+  const ref = (payload ?? {}) as EventAggregateRef;
+  return ref.transactionId ?? ref.projectId ?? "";
 }
 
 export class SupabaseEventStore implements EventStore {
   constructor(private readonly client: SupabaseClient) {}
 
-  async append(events: readonly TransactionEvent[]): Promise<void> {
+  async append(events: readonly DomainEvent<string, unknown>[]): Promise<void> {
     if (events.length === 0) return;
     const rows = events.map((event) => ({
-      aggregate_id: (event.payload as EventPayloadWithTx).transactionId,
+      aggregate_id: aggregateIdOf(event.payload),
       type: event.name,
       payload: event.payload,
       occurred_at: event.occurredAt,

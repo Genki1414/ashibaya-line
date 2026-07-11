@@ -1,7 +1,7 @@
 import { Company } from "../../domain/company";
 import { Project } from "../../domain/project";
-import { Transaction, TransactionEvent } from "../../domain/transaction";
-import { CompanyId, ProjectId, TransactionId } from "../../domain/shared";
+import { Transaction } from "../../domain/transaction";
+import { CompanyId, DomainEvent, ProjectId, TransactionId } from "../../domain/shared";
 import { CompanyRepository, EventStore, ProjectRepository, StoredEvent, TransactionRepository } from "../../application/ports";
 import {
   companyToRow,
@@ -75,17 +75,22 @@ export class InMemoryProjectRepository implements ProjectRepository {
   }
 }
 
-interface EventPayloadWithTx {
-  readonly transactionId: string;
+interface EventAggregateRef {
+  readonly transactionId?: string;
+  readonly projectId?: string;
+}
+
+function aggregateIdOf(payload: unknown): string {
+  const ref = (payload ?? {}) as EventAggregateRef;
+  return ref.transactionId ?? ref.projectId ?? "";
 }
 
 export class InMemoryEventStore implements EventStore {
   readonly events: StoredEvent[] = [];
 
-  async append(events: readonly TransactionEvent[]): Promise<void> {
+  async append(events: readonly DomainEvent<string, unknown>[]): Promise<void> {
     for (const event of events) {
-      const payload = event.payload as EventPayloadWithTx;
-      this.events.push({ aggregateId: payload.transactionId, type: event.name, payload: event.payload, occurredAt: event.occurredAt });
+      this.events.push({ aggregateId: aggregateIdOf(event.payload), type: event.name, payload: event.payload, occurredAt: event.occurredAt });
     }
   }
 
