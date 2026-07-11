@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f4f6fb;
+  --foreground: #1a2233;
+
+  /* docs/ashiba_platform_v8.jsx の `T` に対応するブランドカラー */
+  --color-brand-blue: #1657c9;
+  --color-brand-blue-dark: #0f3f97;
+  --color-brand-blue-light: #e8f0fe;
+  --color-brand-blue-soft: #f4f8ff;
+  --color-brand-ink: #1a2233;
+  --color-brand-sub: #5b6473;
+  --color-brand-faint: #8a93a3;
+  --color-brand-line: #e5e9f0;
+  --color-brand-bg: #f4f6fb;
+  --color-brand-green: #159b67;
+  --color-brand-green-soft: #e4f6ee;
+  --color-brand-amber: #e39a2b;
+  --color-brand-amber-soft: #fcf2df;
+  --color-brand-red: #e5484d;
+  --color-brand-red-soft: #fcebec;
+  --color-brand-purple: #6d4ac4;
+  --color-brand-gold: #c79a2e;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Noto Sans JP",
+    "Yu Gothic", system-ui, sans-serif;
+}
