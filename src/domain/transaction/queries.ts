@@ -99,27 +99,6 @@ export interface PendingAction {
   readonly phase?: PhaseKey;
 }
 
-/** 「あなたの操作（要対応）」ハイライト用の一覧。ロールごとに今すぐ対応すべき項目を集約する。 */
-export function pendingActionsFor(tx: Transaction, role: Actor): PendingAction[] {
-  const actions: PendingAction[] = [];
-  const acceptPending = tx.startedAt === null;
-  if (acceptPending && role === "partner") actions.push({ kind: "acceptDeal" });
-
-  if (tx.startedAt) {
-    if (role === "prime" && !tx.order.order) actions.push({ kind: "issueOrder" });
-    if (role === "partner" && tx.order.order && !tx.order.acknowledgement) actions.push({ kind: "acknowledgeOrder" });
-    for (const phase of PHASE_KEYS) {
-      const wa = workAction(tx, phase);
-      if (wa && (wa.actor === role || wa.actor === "either")) actions.push({ kind: wa.kind, phase });
-      const ba = billAction(tx, phase);
-      if (ba && ba.actor === role) actions.push({ kind: ba.kind, phase });
-    }
-  }
-  if (hasOpenIssue(tx)) actions.push({ kind: "resolveIssue" });
-  if (tx.scheduleNotice && !tx.scheduleNotice.acknowledged && role === "partner") actions.push({ kind: "acknowledgeSchedule" });
-  return actions;
-}
-
 const PHASE_LABEL: Record<PhaseKey, string> = { assembly: "組立", dismantle: "解体" };
 const ACTOR_LABEL: Record<Actor | "either", string> = { prime: "元請", partner: "協力会社", either: "どちらか" };
 const WORK_ACTION_LABEL: Record<WorkActionDescriptor["kind"], string> = {
@@ -134,6 +113,88 @@ const BILL_ACTION_LABEL: Record<BillActionDescriptor["kind"], string> = {
   registerPayment: "支払い済みにする",
   confirmDeposit: "入金を確認",
 };
+/** 作業/請求アクションの kind をアプリケーション層のユースケース名に対応させる。 */
+const WORK_ACTION_KEY: Record<WorkActionDescriptor["kind"], string> = {
+  startWork: "startWork",
+  reportWork: "reportWorkCompletion",
+  confirmWork: "confirmWork",
+  reworkDone: "completeRework",
+};
+const BILL_ACTION_KEY: Record<BillActionDescriptor["kind"], string> = {
+  invoice: "submitInvoice",
+  checkInvoice: "checkInvoice",
+  registerPayment: "registerPayment",
+  confirmDeposit: "confirmDeposit",
+};
+
+export type ActionSection = "transaction" | "order" | "assembly" | "dismantle" | "issue" | "schedule";
+
+/**
+ * ある役割（元請/協力）が「今この取引で実行できる操作」の一覧。
+ * コマンドのガード（workAction/billAction 等）と同じ判定から導出するため、
+ * UIの自動展開・ハイライト・ボタン出し分けはすべてこれ1つに集約できる。
+ * key はアプリケーション層のユースケース名に一致。
+ */
+export interface AvailableAction {
+  readonly key: string;
+  readonly label: string;
+  readonly phase?: PhaseKey;
+  readonly urgent: boolean;
+  readonly section: ActionSection;
+}
+
+function invoiceLabel(tx: Transaction, phase: PhaseKey): string {
+  if (tx.payType !== "progress") return "請求書を提出";
+  return phase === "assembly" ? "組立分を請求" : "残金を請求";
+}
+
+export function availableActions(tx: Transaction, role: Actor): AvailableAction[] {
+  if (tx.status === "completed") return [];
+  const actions: AvailableAction[] = [];
+
+  if (tx.startedAt === null) {
+    if (role === "partner") actions.push({ key: "startTransaction", label: "取引を開始", urgent: true, section: "transaction" });
+    return actions;
+  }
+
+  if (role === "prime" && !tx.order.order) actions.push({ key: "issueOrder", label: "注文書を発行", urgent: true, section: "order" });
+  if (role === "partner" && tx.order.order && !tx.order.acknowledgement) {
+    actions.push({ key: "acknowledgeOrder", label: "注文請書を発行", urgent: true, section: "order" });
+  }
+
+  for (const phase of PHASE_KEYS) {
+    const wa = workAction(tx, phase);
+    if (wa && (wa.actor === role || wa.actor === "either")) {
+      actions.push({
+        key: WORK_ACTION_KEY[wa.kind],
+        label: `${PHASE_LABEL[phase]}${WORK_ACTION_LABEL[wa.kind]}`,
+        phase,
+        urgent: true,
+        section: phase,
+      });
+    }
+    const ba = billAction(tx, phase);
+    if (ba && ba.actor === role) {
+      const label = ba.kind === "invoice" ? invoiceLabel(tx, phase) : BILL_ACTION_LABEL[ba.kind];
+      actions.push({ key: BILL_ACTION_KEY[ba.kind], label, phase, urgent: true, section: phase });
+    }
+  }
+
+  if (hasOpenIssue(tx) && role === "prime") {
+    actions.push({ key: "resolveIssue", label: "確認事項を解決", urgent: true, section: "issue" });
+  }
+  if (tx.scheduleNotice && !tx.scheduleNotice.acknowledged && role === "partner") {
+    actions.push({ key: "acknowledgeSchedule", label: "工期・予定変更を確認", urgent: true, section: "schedule" });
+  }
+  return actions;
+}
+
+/** 「あなたの操作（要対応）」ハイライト用。availableActions のうち要対応（urgent）だけを返す。 */
+export function pendingActionsFor(tx: Transaction, role: Actor): PendingAction[] {
+  return availableActions(tx, role)
+    .filter((action) => action.urgent)
+    .map((action) => ({ kind: action.key, phase: action.phase }));
+}
 
 /** 「現在のステータス」直下に出す一行サマリ。UI・LINE通知の両方から再利用できるよう純粋関数にしてある。 */
 export function nextHint(tx: Transaction): string {

@@ -33,10 +33,18 @@ export {
   workAction,
   billAction,
   category,
+  availableActions,
   pendingActionsFor,
   nextHint,
 } from "./queries";
-export type { WorkActionDescriptor, BillActionDescriptor, TransactionCategory, PendingAction } from "./queries";
+export type {
+  WorkActionDescriptor,
+  BillActionDescriptor,
+  TransactionCategory,
+  PendingAction,
+  AvailableAction,
+  ActionSection,
+} from "./queries";
 export type { TransactionEvent } from "./events";
 export {
   startTransaction,
