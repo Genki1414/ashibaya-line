@@ -22,6 +22,16 @@ npm test   # src/domain のドメインロジックのユニットテスト（vi
 `supabase/migrations/0001_init.sql` が初期スキーマ（companies / projects / transactions / chats）。
 認証方式（LINEログイン等）確定後にRLSポリシーを設計する。
 
+## プロトタイプ再現（`/`）
+
+アプリのトップ `/` は、`docs/ashiba_platform_v8.jsx` のv8プロトタイプを忠実に再現した
+クライアント・アプリ（`src/components/prototype/AshibaPrototype.jsx`）。全画面（ホーム／案件＋投稿／
+取引一覧＋詳細／パートナー／自社／会社一覧・プロフィール／認証・LINE・運営管理／チャット）と
+デザイン、役割スイッチ・要対応ハイライトまで内部状態で動作する。ドメイン層への接続は次フェーズで、
+この再現UIを Server Action 経由で置き換えていく。
+
+> ドメイン接続版のデモ（Supabase or インメモリ）は `/transactions` 以下に別途残置。
+
 ## アーキテクチャ（層構成）
 
 UIにドメインを直接露出させない。画面 → Server Action → アプリケーション層（ユースケース）→ ドメイン層、
