@@ -22,13 +22,38 @@ npm test   # src/domain のドメインロジックのユニットテスト（vi
 `supabase/migrations/0001_init.sql` が初期スキーマ（companies / projects / transactions / chats）。
 認証方式（LINEログイン等）確定後にRLSポリシーを設計する。
 
-## ディレクトリ
+## アーキテクチャ（層構成）
 
-- `src/domain/` — UIに依存しない純粋なドメイン層（DDD）。取引エンジン（独立二相モデル）の本体はここ。詳細は下記
-- `src/app/(tabs)/` — 下部ナビ5タブ（ホーム・案件・取引・パートナー・自社）。まだ `src/domain` には未接続
-- `src/types/domain.ts` — 仕様書4章のデータモデルに対応する型定義（永続化・UI向けDTO。`src/domain` の集約とは別物）
+UIにドメインを直接露出させない。画面 → Server Action → アプリケーション層（ユースケース）→ ドメイン層、
+という一方向で、権限判定・状態遷移はすべてドメイン＋アプリ層が持つ。
+
+```
+src/app        … Next.js 画面 + Server Actions（薄いディスパッチャ）
+src/server     … 合成ルート（Supabase or デモ）＋擬似ログイン解決
+src/application… ユースケース（TransactionService 等）・ポート・AppResult/errorMessage
+src/infra      … ポート実装（Supabase / インメモリ）＋マッパー＋信用実績プロセッサ
+src/domain     … 純粋なドメイン層（DDD）。取引エンジン（独立二相）の本体
+```
+
+- ボタンの出し分け・自動展開・ハイライトは **`transaction.availableActions(role)`** 1つから導出し、UIに権限ロジックを重複させない。
+- 取引完了時、集約は `TransactionCompleted` を発行するだけ。相手会社の信用実績更新は特権処理（Supabaseは
+  `apply_transaction_completion` トリガ、テスト/デモは `InMemoryCreditProcessor`）が冪等に行う。
+
+### バックエンドの2モード
+
+- **Supabase**：`NEXT_PUBLIC_SUPABASE_URL` / `..._ANON_KEY` があれば Supabase 実装（RLSはユーザートークンで有効）。
+- **デモ**：環境変数が無ければ、v8シードを積んだインメモリ実装で起動（DBなしでも操作フローを再現）。
+  状態はプロセス内保持で非永続。本番相当の永続化は Supabase モードで行う。
+- どちらのモードでも、**擬似ログイン（操作する会社の切替）** は cookie で行う（v8の元請/協力ロールスイッチの置き換え）。
+  LINEログイン接続時はこの解決を本ログインに差し替えるだけでよい。
+
+## ディレクトリ（ドメイン層 `src/domain`）
+
+- `src/app/(tabs)/transactions/` — 取引一覧＋取引詳細（TxDetail）。`availableActions` で要対応を自動展開・ハイライト
+- `src/types/domain.ts` — 旧・参照用の型定義（`src/domain` の集約が正。将来削除予定）
 - `src/lib/theme.ts` — 青×白のブランドカラー（`docs/ashiba_platform_v8.jsx` の `T` に対応）
 - `src/lib/supabase/` — ブラウザ / サーバー / ミドルウェア用Supabaseクライアント
+- `supabase/migrations/` — スキーマ・RLS・信用実績プロセッサ（0001 スナップショット / 0002 RLS＋関数）
 
 ### `src/domain`（ドメイン層）
 
