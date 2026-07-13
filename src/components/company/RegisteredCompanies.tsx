@@ -47,22 +47,33 @@ export function RegisteredCompanies({ companies }: { companies: CompanyCard[] })
         ))}
       </div>
       {sorted.map((c) => (
-        <div
-          key={c.id}
-          className="mb-3 rounded-2xl border bg-white p-3.5"
-          style={{ borderColor: c.isSelf ? "var(--color-brand-blue)" : "var(--color-brand-line)" }}
-        >
-          <div className="mb-2.5 flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-(--color-brand-blue) text-[18px] font-black text-white">{c.name.slice(0, 1)}</div>
-            <div className="flex-1">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[14.5px] font-bold text-(--color-brand-ink)">{c.name}</span>
-                {c.isSelf && <span className="rounded-full bg-(--color-brand-blue-light) px-1.5 py-0.5 text-[10px] font-bold text-(--color-brand-blue)">自社</span>}
-              </div>
-              <div className="text-[11.5px] text-(--color-brand-sub)">{[c.region, c.works].filter(Boolean).join(" ・ ")}</div>
-            </div>
-            <LevelBadge level={c.level} />
+        <CompanyRow key={c.id} c={c} />
+      ))}
+    </div>
+  );
+}
+
+function CompanyRow({ c }: { c: CompanyCard }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div
+      className="mb-3 rounded-2xl border bg-white"
+      style={{ borderColor: c.isSelf ? "var(--color-brand-blue)" : "var(--color-brand-line)" }}
+    >
+      <button onClick={() => setOpen((o) => !o)} className="flex w-full items-center gap-3 p-3.5 text-left">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-(--color-brand-blue) text-[18px] font-black text-white">{c.name.slice(0, 1)}</div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <span className="truncate text-[14.5px] font-bold text-(--color-brand-ink)">{c.name}</span>
+            {c.isSelf && <span className="shrink-0 rounded-full bg-(--color-brand-blue-light) px-1.5 py-0.5 text-[10px] font-bold text-(--color-brand-blue)">自社</span>}
           </div>
+          <div className="truncate text-[11.5px] text-(--color-brand-sub)">{[c.region, c.works].filter(Boolean).join(" ・ ")}</div>
+        </div>
+        <LevelBadge level={c.level} />
+        <span className="shrink-0 text-(--color-brand-faint)">{open ? "▲" : "▼"}</span>
+      </button>
+      {open && (
+        <div className="border-t border-(--color-brand-line) p-3.5">
           <div className="mb-2.5 flex gap-3">
             <MiniStat n={c.completed} label="取引完了" />
             <MiniStat n={c.onTimeCount} label="期日内支払い" />
@@ -71,7 +82,7 @@ export function RegisteredCompanies({ companies }: { companies: CompanyCard[] })
           </div>
           <VerifyBadges verify={c.verify} />
         </div>
-      ))}
+      )}
     </div>
   );
 }

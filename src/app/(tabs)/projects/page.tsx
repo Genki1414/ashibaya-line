@@ -21,6 +21,8 @@ function ProjectCard({ p }: { p: ProjectCardView }) {
         <Pill label={p.stage === "recruiting" ? "募集中" : "選定済み"} color="#1657C9" bg="#E8F0FE" />
         <Pill label={p.jobType === "contract" ? "請負" : "応援"} color={p.jobType === "contract" ? "#6D4AC4" : "#1657C9"} bg={p.jobType === "contract" ? "#EEE9FA" : "#E8F0FE"} />
         <Pill label={p.payType === "progress" ? "出来高" : "一括"} color={p.payType === "progress" ? "#C79A2E" : "#5B6473"} bg={p.payType === "progress" ? "#FBF2D9" : "#EEF1F5"} />
+        {p.isOwn && <Pill label="自社の案件" color="#159B67" bg="#E4F6EE" />}
+        {p.applied && p.stage === "recruiting" && <Pill label="応募中" color="#C77700" bg="#FCF2DF" />}
         <span className="ml-auto"><LevelBadge level={p.primeLevel} /></span>
       </div>
       <div className="text-[15.5px] font-bold text-(--color-brand-ink)">{p.name}</div>

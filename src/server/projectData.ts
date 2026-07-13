@@ -19,6 +19,8 @@ export interface ProjectCardView {
   primeName: string;
   primeLevel: string;
   isOwn: boolean;
+  /** 閲覧者自身がこの案件に応募済みか（自分の応募状態のみ。他社の応募は含めない）。 */
+  applied: boolean;
 }
 
 function toCard(p: Project, primeById: Map<string, Company>, myCompanyId: string | null): ProjectCardView {
@@ -39,6 +41,7 @@ function toCard(p: Project, primeById: Map<string, Company>, myCompanyId: string
     primeName: prime?.name ?? p.primeId,
     primeLevel: prime ? companyCreditLevel(prime, false) : "unverified",
     isOwn: p.primeId === myCompanyId,
+    applied: myCompanyId != null && p.applicantIds.some((a) => (a as unknown as string) === myCompanyId),
   };
 }
 
