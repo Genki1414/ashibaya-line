@@ -102,6 +102,7 @@ export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, ne
   const [modal, setModal] = useState<{ action: AvailableAction; fields: Field[]; overrideKey?: string } | null>(null);
   const [confirmChoice, setConfirmChoice] = useState<AvailableAction | null>(null);
   const [acceptChoice, setAcceptChoice] = useState<AvailableAction | null>(null);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
 
   const showToast = (ok: boolean, message: string) => {
     setToast({ ok, message });
@@ -211,21 +212,35 @@ export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, ne
 
       {/* 工期・予定変更 */}
       <Section title="工期・予定" highlight={hasPending("schedule")}>
-        {tx.scheduleNotice && !tx.scheduleNotice.acknowledged ? (
-          <div className="rounded-xl bg-(--color-brand-amber-soft) p-3 text-[12.5px]">
-            工期・予定の変更通知があります：{tx.scheduleNotice.changes.map((c) => `${c.field} ${dmd(c.from)}→${dmd(c.to)}`).join(" / ")}
-          </div>
-        ) : (
-          <>
-            <Row label="工期" value={`${dmd(tx.overallSchedule.plannedStart)}〜${dmd(tx.overallSchedule.plannedEnd)}`} />
-            {activePhaseKeys(tx).map((phase) => (
-              <Row
-                key={phase}
-                label={phaseLabel(tx, phase) ? `${phaseLabel(tx, phase)}予定` : "作業予定"}
-                value={`${dmd(tx.phases[phase].schedule.plannedStart)}〜${dmd(tx.phases[phase].schedule.plannedEnd)}`}
-              />
+        {tx.scheduleNotice && !tx.scheduleNotice.acknowledged && (
+          <div className="mb-2.5 rounded-xl border border-(--color-brand-amber) bg-(--color-brand-amber-soft) p-3">
+            <div className="mb-1.5 text-[12.5px] font-bold" style={{ color: "#9A6612" }}>
+              {role === "prime" ? "工期・予定を変更しました（相手の確認待ち）" : "工期・予定の変更があります（要確認）"}
+            </div>
+            {tx.scheduleNotice.changes.map((c, i) => (
+              <div key={i} className="flex flex-wrap items-center gap-x-1.5 text-[12.5px]" style={{ color: "#7A5410" }}>
+                <span className="font-bold">{c.field}</span>
+                <span className="line-through opacity-70">{dmd(c.from)}</span>
+                <span>→</span>
+                <span className="font-bold">{dmd(c.to)}</span>
+              </div>
             ))}
-          </>
+          </div>
+        )}
+        <Row label="工期" value={`${dmd(tx.overallSchedule.plannedStart)}〜${dmd(tx.overallSchedule.plannedEnd)}`} />
+        {activePhaseKeys(tx).map((phase) => (
+          <Row
+            key={phase}
+            label={phaseLabel(tx, phase) ? `${phaseLabel(tx, phase)}予定` : "作業予定"}
+            value={`${dmd(tx.phases[phase].schedule.plannedStart)}〜${dmd(tx.phases[phase].schedule.plannedEnd)}`}
+          />
+        ))}
+        {role === "prime" && tx.status !== "completed" && (
+          <div className="mt-2.5">
+            <SmallButton disabled={pending} onClick={() => setScheduleOpen(true)}>
+              工期・予定を変更する
+            </SmallButton>
+          </div>
         )}
       </Section>
 
@@ -278,6 +293,43 @@ export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, ne
           }}
         />
       )}
+
+      {/* 工期・予定の変更（元請）：現在値を初期表示し、変更分だけ通知される */}
+      {scheduleOpen &&
+        (() => {
+          const l = (phase: PhaseKey) => phaseLabel(tx, phase) || "作業";
+          const fields: Field[] = [
+            { name: "overallStart", label: "工期 開始", type: "date" },
+            { name: "overallEnd", label: "工期 終了", type: "date" },
+            ...activePhaseKeys(tx).flatMap((phase): Field[] => [
+              { name: `${phase}Start`, label: `${l(phase)} 開始予定`, type: "date" },
+              { name: `${phase}End`, label: `${l(phase)} 完了予定`, type: "date" },
+            ]),
+          ];
+          const defaults: Record<string, string> = {
+            overallStart: tx.overallSchedule.plannedStart ?? "",
+            overallEnd: tx.overallSchedule.plannedEnd ?? "",
+            ...Object.fromEntries(
+              activePhaseKeys(tx).flatMap((phase) => [
+                [`${phase}Start`, tx.phases[phase].schedule.plannedStart ?? ""],
+                [`${phase}End`, tx.phases[phase].schedule.plannedEnd ?? ""],
+              ]),
+            ),
+          };
+          return (
+            <FormModal
+              title="工期・予定を変更"
+              fields={fields}
+              defaults={defaults}
+              pending={pending}
+              onClose={() => setScheduleOpen(false)}
+              onSubmit={(payload) => {
+                dispatch({ txId: tx.id, key: "changeSchedule", payload });
+                setScheduleOpen(false);
+              }}
+            />
+          );
+        })()}
 
       {/* 取引開始（受注側の受諾）：売掛保証の適用可否を選ぶ */}
       {acceptChoice && (

@@ -6,7 +6,7 @@ import { CompanyId, TransactionId } from "@/domain/shared";
 import { AppResult, appErr } from "@/application";
 import { getContainer, ACTING_COMPANY_COOKIE } from "@/server/container";
 import type { Transaction } from "@/domain/transaction";
-import type { PhaseKey } from "@/domain/transaction";
+import type { PhaseKey, ScheduleChangeInput } from "@/domain/transaction";
 
 export interface TransactionActionInput {
   readonly txId: string;
@@ -108,6 +108,20 @@ export async function runTransactionAction(input: TransactionActionInput): Promi
     case "acknowledgeSchedule":
       result = await svc.acknowledgeSchedule(company, txId);
       break;
+    case "changeSchedule": {
+      const sched = (sk: string, ek: string): { plannedStart: string | null; plannedEnd: string | null } | undefined => {
+        const s = str(p, sk);
+        const e = str(p, ek);
+        return s || e ? { plannedStart: s || null, plannedEnd: e || null } : undefined;
+      };
+      const input: ScheduleChangeInput = {
+        overallSchedule: sched("overallStart", "overallEnd"),
+        assemblySchedule: sched("assemblyStart", "assemblyEnd"),
+        dismantleSchedule: sched("dismantleStart", "dismantleEnd"),
+      };
+      result = await svc.changeSchedule(company, txId, input);
+      break;
+    }
     case "linkAshiBase":
       result = await svc.linkAshiBase(company, txId);
       break;
