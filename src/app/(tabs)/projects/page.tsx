@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app/AppShell";
 import { LevelBadge } from "@/components/company/parts";
+import { Notifications } from "@/components/app/Notifications";
 import { loadCompanyPageData } from "@/server/companyData";
 import { listProjects, type ProjectCardView } from "@/server/projectData";
 
@@ -50,6 +51,7 @@ export default async function ProjectsTab() {
 
   return (
     <AppShell title="案件">
+      {companyId && <Notifications emptyHint={false} />}
       {canPost ? (
         <Link href="/projects/new" className="mb-4 block rounded-2xl border-[1.5px] border-dashed border-(--color-brand-blue) bg-(--color-brand-blue-soft) py-3.5 text-center text-[14.5px] font-bold text-(--color-brand-blue)">
           ＋ 案件を投稿する
