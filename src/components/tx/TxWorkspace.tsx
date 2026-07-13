@@ -252,7 +252,22 @@ export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, ne
       </Section>
 
       {/* 案件情報 */}
-      <Section title="案件情報 / 当事者">
+      <Section title="案件情報 / 当事者" highlight={hasPending("info")}>
+        {tx.infoNotice && !tx.infoNotice.acknowledged && (
+          <div className="mb-2.5 rounded-xl border border-(--color-brand-amber) bg-(--color-brand-amber-soft) p-3">
+            <div className="mb-1.5 text-[12.5px] font-bold" style={{ color: "#9A6612" }}>
+              {role === "prime" ? "案件情報を変更しました（相手の確認待ち）" : "案件情報の変更があります（要確認）"}
+            </div>
+            {tx.infoNotice.changes.map((c, i) => (
+              <div key={i} className="flex flex-wrap items-center gap-x-1.5 text-[12.5px]" style={{ color: "#7A5410" }}>
+                <span className="font-bold">{c.field}</span>
+                <span className="line-through opacity-70">{c.from}</span>
+                <span>→</span>
+                <span className="font-bold">{c.to}</span>
+              </div>
+            ))}
+          </div>
+        )}
         <Row label="現場" value={`${tx.region} ${tx.address}`} />
         <Row label="元請" value={`${prime.name}（${LEVEL_JP[prime.level] ?? prime.level}）`} />
         <Row label="協力会社" value={`${partner.name}（${LEVEL_JP[partner.level] ?? partner.level}）`} />

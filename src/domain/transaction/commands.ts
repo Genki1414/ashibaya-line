@@ -393,7 +393,19 @@ export function updateTransactionInfo(tx: Transaction, actor: Actor, input: Tran
   }
 
   if (changes.length === 0) return ok({ transaction: tx, events: [] });
+  // 関係先（受注側）へ変更を通知し、確認を求める。
+  transaction = { ...transaction, infoNotice: { changes, notifiedAt: at, acknowledged: false } };
   const event = createEvent("TransactionInfoUpdated", at, { transactionId: tx.id, changes });
+  return ok({ transaction, events: [event] });
+}
+
+/** 受注側による案件情報変更の確認。 */
+export function acknowledgeInfo(tx: Transaction, actor: Actor, at: IsoDate): Result<CommandResult> {
+  const guard = requireActor(actor, "partner", "案件情報変更の確認");
+  if (!guard.ok) return guard;
+  if (!tx.infoNotice) return err(new DomainError("NO_INFO_NOTICE", "確認すべき案件情報の変更はありません"));
+  const transaction: Transaction = { ...tx, infoNotice: { ...tx.infoNotice, acknowledged: true } };
+  const event = createEvent("InfoAcknowledged", at, { transactionId: tx.id });
   return ok({ transaction, events: [event] });
 }
 

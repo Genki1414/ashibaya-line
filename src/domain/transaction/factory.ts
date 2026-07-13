@@ -56,6 +56,7 @@ export function createTransaction(input: CreateTransactionInput): Transaction {
     issues: [],
     consultations: [],
     scheduleNotice: null,
+    infoNotice: null,
     ashibase: { linked: false, linkedAt: null },
     startedAt: null,
   };

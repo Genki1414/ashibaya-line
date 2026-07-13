@@ -109,6 +109,9 @@ export async function runTransactionAction(input: TransactionActionInput): Promi
     case "acknowledgeSchedule":
       result = await svc.acknowledgeSchedule(company, txId);
       break;
+    case "acknowledgeInfo":
+      result = await svc.acknowledgeInfo(company, txId);
+      break;
     case "changeSchedule": {
       const sched = (sk: string, ek: string): { plannedStart: string | null; plannedEnd: string | null } | undefined => {
         const s = str(p, sk);

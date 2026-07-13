@@ -6,6 +6,7 @@ import {
   Transaction,
   TransactionEvent,
   acknowledgeOrder,
+  acknowledgeInfo,
   acknowledgeSchedule,
   changeSchedule,
   checkInvoice,
@@ -150,6 +151,10 @@ export class TransactionService {
 
   updateTransactionInfo(companyId: CompanyId, txId: TransactionId, input: TransactionInfoInput) {
     return this.run(companyId, txId, (tx, role, at) => updateTransactionInfo(tx, role, input, at));
+  }
+
+  acknowledgeInfo(companyId: CompanyId, txId: TransactionId) {
+    return this.run(companyId, txId, (tx, role, at) => acknowledgeInfo(tx, role, at));
   }
 
   acknowledgeSchedule(companyId: CompanyId, txId: TransactionId) {

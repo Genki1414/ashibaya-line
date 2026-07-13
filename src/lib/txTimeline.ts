@@ -67,6 +67,8 @@ export function describeEvent(event: StoredEvent): TimelineEntry {
       const fields = changes.map((c) => c.field).filter(Boolean).join("・");
       return { ...base, label: "案件情報を変更", detail: fields || null, kind: "normal" };
     }
+    case "InfoAcknowledged":
+      return { ...base, label: "案件情報の変更を確認", detail: null, kind: "normal" };
     case "ScheduleAcknowledged":
       return { ...base, label: "工期・予定変更を確認", detail: null, kind: "normal" };
     case "AshiBaseLinked":
