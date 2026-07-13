@@ -1,5 +1,5 @@
 import { getContainer } from "./container";
-import { availableActions, category, type Actor, type Transaction } from "@/domain/transaction";
+import { activePhaseKeys, availableActions, category, type Actor, type Transaction } from "@/domain/transaction";
 import { companyCreditLevel, type Company } from "@/domain/company";
 import { buildTimeline, type TimelineEntry } from "@/lib/txTimeline";
 
@@ -26,7 +26,8 @@ function roleOf(tx: Transaction, companyId: string | null): Actor | null {
 }
 
 function totalAmount(tx: Transaction): number {
-  return (tx.phases.assembly.amount ?? 0) + (tx.phases.dismantle.amount ?? 0);
+  // 応援は作業フェーズのみ、請負は組立＋解体。進行するフェーズだけを合算する。
+  return activePhaseKeys(tx).reduce((sum, phase) => sum + (tx.phases[phase].amount ?? 0), 0);
 }
 
 export interface TxCardView {

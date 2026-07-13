@@ -19,6 +19,10 @@ export interface SelectPartnerResult {
 
 function splitPhaseAmounts(project: Project): { assemblyAmount: Money | null; dismantleAmount: Money | null } {
   const base = contractAmount(project);
+  // 応援（人工）は単相。全額を作業フェーズ（assembly）に置き、解体は使わない。
+  if (project.jobType === "support") {
+    return { assemblyAmount: base, dismantleAmount: null };
+  }
   if (project.payType === "lump") {
     return { assemblyAmount: null, dismantleAmount: base };
   }

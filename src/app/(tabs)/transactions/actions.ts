@@ -19,12 +19,13 @@ function str(payload: Record<string, string> | undefined, key: string): string {
   return payload?.[key] ?? "";
 }
 function num(payload: Record<string, string> | undefined, key: string): number {
-  return Number(payload?.[key] ?? 0);
+  // 金額欄は3桁区切りで届くことがあるため数字以外を除去してから数値化する。
+  return Number(String(payload?.[key] ?? "0").replace(/[^\d.]/g, "") || 0);
 }
 function optNum(payload: Record<string, string> | undefined, key: string): number | null {
   const raw = payload?.[key];
   if (raw === undefined || raw === "") return null;
-  return Number(raw);
+  return Number(String(raw).replace(/[^\d.]/g, "") || 0);
 }
 
 /**

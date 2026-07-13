@@ -12,12 +12,16 @@ import type { TimelineEntry } from "@/lib/txTimeline";
 type Field = {
   name: string;
   label: string;
-  type: "date" | "number" | "text" | "textarea";
+  type: "date" | "number" | "text" | "textarea" | "money";
   required?: boolean;
   optional?: boolean;
 };
 
 const TODAY = "2026-07-11";
+const fmtMoney = (raw: string | number) => {
+  const digits = String(raw).replace(/[^\d]/g, "");
+  return digits ? Number(digits).toLocaleString() : "";
+};
 
 /** アクション key ごとの入力フォーム定義。定義が無い key は入力なしで即実行。 */
 const FIELDS: Record<string, Field[]> = {
@@ -33,18 +37,18 @@ const FIELDS: Record<string, Field[]> = {
     { name: "photoCount", label: "写真枚数", type: "number", optional: true },
   ],
   submitInvoice: [
-    { name: "amount", label: "請求額", type: "number", required: true },
+    { name: "amount", label: "請求額", type: "money", required: true },
     { name: "issuedAt", label: "請求日", type: "date", required: true },
     { name: "dueDate", label: "支払期日", type: "date", required: true },
     { name: "bankAccount", label: "振込先", type: "text", required: true },
   ],
   registerPayment: [
-    { name: "amount", label: "支払額", type: "number", required: true },
+    { name: "amount", label: "支払額", type: "money", required: true },
     { name: "paidAt", label: "支払日", type: "date", required: true },
     { name: "method", label: "支払方法", type: "text", optional: true },
   ],
   confirmDeposit: [
-    { name: "amount", label: "入金額", type: "number", required: true },
+    { name: "amount", label: "入金額", type: "money", required: true },
     { name: "confirmedAt", label: "入金確認日", type: "date", required: true },
   ],
   requestRework: [{ name: "text", label: "是正・手直しの内容", type: "textarea", required: true }],
@@ -104,6 +108,7 @@ export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, ne
   const [acceptChoice, setAcceptChoice] = useState<AvailableAction | null>(null);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{ key: string; label: string; phase?: PhaseKey } | null>(null);
 
   const showToast = (ok: boolean, message: string) => {
     setToast({ ok, message });
@@ -135,7 +140,8 @@ export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, ne
     }
     const fields = FIELDS[action.key];
     if (!fields) {
-      dispatch({ txId: tx.id, key: action.key, phase: action.phase });
+      // 入力なしの操作も、実行前に必ず確認する。
+      setConfirmAction({ key: action.key, label: action.label, phase: action.phase });
       return;
     }
     setModal({ action, fields });
@@ -250,14 +256,19 @@ export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, ne
         <Row label="現場" value={`${tx.region} ${tx.address}`} />
         <Row label="元請" value={`${prime.name}（${LEVEL_JP[prime.level] ?? prime.level}）`} />
         <Row label="協力会社" value={`${partner.name}（${LEVEL_JP[partner.level] ?? partner.level}）`} />
-        {activePhaseKeys(tx).map((phase) => (
-          <Row
-            key={phase}
-            label={phaseLabel(tx, phase) ? `${phaseLabel(tx, phase)}金額` : "金額"}
-            value={`${yen(tx.phases[phase].amount)}${tx.phases[phase].bill.status !== "none" ? "（請求開始済み）" : ""}`}
-          />
-        ))}
-        <Row label="支払条件" value={`${tx.closing}締め / ${tx.payTerm}払い（${tx.payType === "progress" ? "出来高" : "一括"}）`} />
+        <Row
+          label={`金額内訳（${tx.payType === "progress" ? "出来高" : "一括"}）`}
+          value={yen(activePhaseKeys(tx).reduce((s, k) => s + (tx.phases[k].amount ?? 0), 0))}
+        />
+        {activePhaseKeys(tx).length > 1 &&
+          activePhaseKeys(tx).map((phase) => (
+            <Row
+              key={phase}
+              label={`　└ ${phaseLabel(tx, phase)}分`}
+              value={`${yen(tx.phases[phase].amount)}${tx.phases[phase].bill.status !== "none" ? "（請求開始済み）" : ""}`}
+            />
+          ))}
+        <Row label="支払条件" value={`${tx.closing}締め / ${tx.payTerm}払い`} />
         <Row label="売掛保証" value={tx.startedAt ? (tx.guaranteed ? "適用（受注側が選択）" : "なし") : "受注時に受注側が選択"} />
         {role === "prime" && tx.status !== "completed" && (
           <div className="mt-2">
@@ -267,7 +278,7 @@ export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, ne
           </div>
         )}
         <div className="mt-2 flex items-center gap-2">
-          <SmallButton disabled={pending || tx.ashibase.linked} onClick={() => dispatch({ txId: tx.id, key: "linkAshiBase" })}>
+          <SmallButton disabled={pending || tx.ashibase.linked} onClick={() => setConfirmAction({ key: "linkAshiBase", label: "AshiBaseへ連携" })}>
             {tx.ashibase.linked ? "AshiBase連携済み" : "AshiBaseへ連携"}
           </SmallButton>
           {(() => {
@@ -352,12 +363,12 @@ export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, ne
           const fields: Field[] = [
             { name: "region", label: "現場（地域）", type: "text" },
             { name: "address", label: "現場住所", type: "text" },
-            ...editablePhases.map((phase): Field => ({ name: `${phase}Amount`, label: `${phaseLabel(tx, phase) || ""}金額（円）`, type: "number" })),
+            ...editablePhases.map((phase): Field => ({ name: `${phase}Amount`, label: `${phaseLabel(tx, phase) || ""}金額`, type: "money" })),
           ];
           const defaults: Record<string, string> = {
             region: tx.region ?? "",
             address: tx.address ?? "",
-            ...Object.fromEntries(editablePhases.map((phase) => [`${phase}Amount`, tx.phases[phase].amount != null ? String(tx.phases[phase].amount) : ""])),
+            ...Object.fromEntries(editablePhases.map((phase) => [`${phase}Amount`, tx.phases[phase].amount != null ? fmtMoney(tx.phases[phase].amount as number) : ""])),
           };
           return (
             <FormModal
@@ -382,6 +393,19 @@ export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, ne
           onConfirm={(guaranteed) => {
             dispatch({ txId: tx.id, key: "startTransaction", phase: acceptChoice.phase, payload: { guaranteed: guaranteed ? "on" : "" } });
             setAcceptChoice(null);
+          }}
+        />
+      )}
+
+      {/* 入力なし操作の確認 */}
+      {confirmAction && (
+        <ConfirmModal
+          title={confirmAction.label}
+          pending={pending}
+          onClose={() => setConfirmAction(null)}
+          onConfirm={() => {
+            dispatch({ txId: tx.id, key: confirmAction.key, phase: confirmAction.phase });
+            setConfirmAction(null);
           }}
         />
       )}
@@ -421,11 +445,11 @@ function defaultsFor(tx: Transaction, action: AvailableAction): Record<string, s
   }
   if (action.key === "submitInvoice" && action.phase) {
     const amount = tx.phases[action.phase].amount;
-    if (amount != null) d.amount = String(amount);
+    if (amount != null) d.amount = fmtMoney(amount);
   }
   if ((action.key === "registerPayment" || action.key === "confirmDeposit") && action.phase) {
     const inv = tx.phases[action.phase].bill.invoice;
-    if (inv) d.amount = String(inv.amount);
+    if (inv) d.amount = fmtMoney(inv.amount);
   }
   return d;
 }
@@ -499,37 +523,92 @@ function FormModal({
   onSubmit: (payload: Record<string, string>) => void;
 }) {
   const [values, setValues] = useState<Record<string, string>>(defaults);
-  const set = (name: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setValues((v) => ({ ...v, [name]: e.target.value }));
+  const [confirming, setConfirming] = useState(false);
+  const set = (f: Field) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const raw = e.target.value;
+    setValues((v) => ({ ...v, [f.name]: f.type === "money" ? fmtMoney(raw) : raw }));
+  };
+  const missingRequired = fields.some((f) => f.required && !(values[f.name] ?? "").trim());
+  const display = (f: Field) => {
+    const v = (values[f.name] ?? "").trim();
+    if (!v) return "-";
+    return f.type === "money" ? `¥${v}` : v;
+  };
+
   return (
     <Overlay onClose={onClose}>
       <div className="text-[15px] font-bold">{title}</div>
-      <div className="mt-3 space-y-3">
-        {fields.map((f) => (
-          <div key={f.name}>
-            <label className="mb-1 block text-[12px] font-bold text-(--color-brand-sub)">
-              {f.label}
-              {f.required && <span className="ml-1 text-(--color-brand-red)">必須</span>}
-              {f.optional && <span className="ml-1 text-(--color-brand-faint)">任意</span>}
-            </label>
-            {f.type === "textarea" ? (
-              <textarea value={values[f.name] ?? ""} onChange={set(f.name)} rows={3} className="w-full rounded-lg border border-(--color-brand-line) px-3 py-2 text-[14px]" />
-            ) : (
-              <input
-                type={f.type === "number" ? "number" : f.type === "date" ? "date" : "text"}
-                value={values[f.name] ?? ""}
-                onChange={set(f.name)}
-                className="w-full rounded-lg border border-(--color-brand-line) px-3 py-2 text-[14px]"
-              />
-            )}
+      {!confirming ? (
+        <>
+          <div className="mt-3 space-y-3">
+            {fields.map((f) => (
+              <div key={f.name}>
+                <label className="mb-1 block text-[12px] font-bold text-(--color-brand-sub)">
+                  {f.label}
+                  {f.required && <span className="ml-1 text-(--color-brand-red)">必須</span>}
+                  {f.optional && <span className="ml-1 text-(--color-brand-faint)">任意</span>}
+                </label>
+                {f.type === "textarea" ? (
+                  <textarea value={values[f.name] ?? ""} onChange={set(f)} rows={3} className="w-full rounded-lg border border-(--color-brand-line) px-3 py-2 text-[14px]" />
+                ) : f.type === "money" ? (
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[14px] font-bold text-(--color-brand-sub)">¥</span>
+                    <input inputMode="numeric" value={values[f.name] ?? ""} onChange={set(f)} placeholder="0" className="w-full rounded-lg border border-(--color-brand-line) px-3 py-2 pl-7 text-[14px]" />
+                  </div>
+                ) : (
+                  <input
+                    type={f.type === "number" ? "number" : f.type === "date" ? "date" : "text"}
+                    value={values[f.name] ?? ""}
+                    onChange={set(f)}
+                    className="w-full rounded-lg border border-(--color-brand-line) px-3 py-2 text-[14px]"
+                  />
+                )}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+          <div className="mt-4 flex gap-2">
+            <button onClick={onClose} className="flex-1 rounded-xl border border-(--color-brand-line) py-2.5 text-[14px] font-bold text-(--color-brand-sub)">
+              キャンセル
+            </button>
+            <button onClick={() => setConfirming(true)} disabled={missingRequired} className="flex-1 rounded-xl bg-(--color-brand-blue) py-2.5 text-[14px] font-bold text-white disabled:opacity-50">
+              確認へ進む
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="mt-1 text-[12.5px] text-(--color-brand-sub)">この内容で実行します。よろしいですか？</div>
+          <div className="mt-3 overflow-hidden rounded-xl border border-(--color-brand-line)">
+            {fields.map((f, i) => (
+              <div key={f.name} className="flex gap-3 px-3.5 py-2.5" style={{ borderBottom: i < fields.length - 1 ? "1px solid var(--color-brand-line)" : "none" }}>
+                <div className="w-24 shrink-0 text-[12px] font-semibold text-(--color-brand-sub)">{f.label}</div>
+                <div className="text-[13px] font-semibold text-(--color-brand-ink)">{display(f)}</div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 flex gap-2">
+            <button onClick={() => setConfirming(false)} className="flex-1 rounded-xl border border-(--color-brand-line) py-2.5 text-[14px] font-bold text-(--color-brand-sub)">
+              戻る
+            </button>
+            <button onClick={() => onSubmit(values)} disabled={pending} className="flex-1 rounded-xl bg-(--color-brand-blue) py-2.5 text-[14px] font-bold text-white disabled:opacity-50">
+              {pending ? "実行中…" : "実行する"}
+            </button>
+          </div>
+        </>
+      )}
+    </Overlay>
+  );
+}
+
+function ConfirmModal({ title, message, pending, onConfirm, onClose }: { title: string; message?: string; pending: boolean; onConfirm: () => void; onClose: () => void }) {
+  return (
+    <Overlay onClose={onClose}>
+      <div className="text-[15px] font-bold">{title}</div>
+      <div className="mt-2 text-[12.5px] text-(--color-brand-sub)">{message ?? "この操作を実行します。よろしいですか？"}</div>
       <div className="mt-4 flex gap-2">
-        <button onClick={onClose} className="flex-1 rounded-xl border border-(--color-brand-line) py-2.5 text-[14px] font-bold text-(--color-brand-sub)">
-          キャンセル
-        </button>
-        <button onClick={() => onSubmit(values)} disabled={pending} className="flex-1 rounded-xl bg-(--color-brand-blue) py-2.5 text-[14px] font-bold text-white disabled:opacity-50">
-          実行
+        <button onClick={onClose} className="flex-1 rounded-xl border border-(--color-brand-line) py-2.5 text-[14px] font-bold text-(--color-brand-sub)">キャンセル</button>
+        <button onClick={onConfirm} disabled={pending} className="flex-1 rounded-xl bg-(--color-brand-blue) py-2.5 text-[14px] font-bold text-white disabled:opacity-50">
+          {pending ? "実行中…" : "実行する"}
         </button>
       </div>
     </Overlay>
