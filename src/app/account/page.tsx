@@ -7,6 +7,7 @@ import { companyCreditLevel } from "@/domain/company";
 import { signOut } from "@/app/(auth)/actions";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "マイアカウント" };
 
 const LEVEL_JP: Record<string, string> = { unverified: "未認証", bronze: "Bronze", silver: "Silver", gold: "Gold", platinum: "Platinum" };
 

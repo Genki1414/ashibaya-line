@@ -9,6 +9,7 @@ import { AdminForms } from "./AdminForms";
 import { setCompanyStatus } from "./actions";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "本部管理" };
 
 const LEVEL_JP: Record<string, string> = { unverified: "未認証", bronze: "Bronze", silver: "Silver", gold: "Gold", platinum: "Platinum" };
 
