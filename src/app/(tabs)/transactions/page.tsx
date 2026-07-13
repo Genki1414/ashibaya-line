@@ -30,6 +30,12 @@ function TxCard({ t }: { t: TxCardView }) {
         {t.pending > 0 && (
           <span className="rounded-full bg-(--color-brand-amber) px-2 py-0.5 text-[11px] font-bold text-white">要対応 {t.pending}</span>
         )}
+        {t.hasChange && (
+          <span className="rounded-full px-2 py-0.5 text-[11px] font-bold" style={{ color: "#9A6612", background: "#FCF2DF" }}>変更内容があります</span>
+        )}
+        {t.unread > 0 && (
+          <span className="rounded-full px-2 py-0.5 text-[11px] font-bold" style={{ color: "#6D4AC4", background: "#EEE9FA" }}>💬 新着{t.unread}</span>
+        )}
       </div>
       <div className="text-[15.5px] font-bold text-(--color-brand-ink)">{t.projectName}</div>
       <div className="mt-1.5 flex flex-wrap gap-x-3.5 gap-y-1 text-[12.5px] text-(--color-brand-sub)">
