@@ -22,16 +22,22 @@ function readIsAdmin(appMetadata: Record<string, unknown> | undefined): boolean 
  * ログイン中のユーザー・権限・所属会社を解決する。
  * 役割（元請/協力）はここでは決めない — 取引ごとに prime_company_id / partner_company_id と
  * この companyId を突き合わせて自動判定する（グローバルな役割属性は持たない）。
+ *
+ * 認証の検証は getClaims() を使う。非対称鍵(JWT signing keys)が有効なら
+ * ネットワーク往復なしでローカル検証でき、遷移ごとの待ち時間を減らせる。
+ * 対称鍵(HS256)のプロジェクトでは内部で getUser() にフォールバックするため、
+ * どちらでも安全（従来と同じ検証強度）。
  */
 export const getAuthContext = cache(async function getAuthContext(): Promise<AuthContext> {
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data.user) {
+  const { data, error } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (error || !claims?.sub) {
     return { user: null, isAdmin: false, companyId: null };
   }
 
-  const user: AuthUser = { id: data.user.id, email: data.user.email ?? null };
-  const isAdmin = readIsAdmin(data.user.app_metadata as Record<string, unknown> | undefined);
+  const user: AuthUser = { id: String(claims.sub), email: claims.email ?? null };
+  const isAdmin = readIsAdmin(claims.app_metadata as Record<string, unknown> | undefined);
 
   let companyId: CompanyId | null = null;
   if (!isAdmin) {
