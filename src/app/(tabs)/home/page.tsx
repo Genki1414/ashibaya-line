@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/app/AppShell";
 import { SectionLabel } from "@/components/company/parts";
 import { RegisteredCompanies } from "@/components/company/RegisteredCompanies";
+import { Notifications } from "@/components/app/Notifications";
 import { loadCompanyPageData } from "@/server/companyData";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,8 @@ export default async function HomeTab() {
           </div>
         </div>
       )}
+
+      {self && <Notifications />}
 
       {self && approved && (
         <div className="mb-4 grid grid-cols-2 gap-2">
