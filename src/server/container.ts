@@ -1,7 +1,9 @@
 import { cookies } from "next/headers";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { CompanyId, systemClock } from "../domain/shared";
-import { getAuthContext } from "./auth";
+import { ACTING_COMPANY_COOKIE, currentCompanyId, getDb } from "./acting";
 import { Company } from "../domain/company";
+// getAuthContext は acting.ts 経由（currentCompanyId）で解決するため container では直接使わない
 import { Transaction } from "../domain/transaction";
 import {
   MatchingService,
@@ -18,7 +20,7 @@ import {
 import { SupabaseCreditProcessor } from "../infra/supabase/SupabaseCreditProcessor";
 import { getDemoBackend } from "./demoStore";
 
-export const ACTING_COMPANY_COOKIE = "acting_company_id";
+export { ACTING_COMPANY_COOKIE };
 const DEFAULT_ACTING_COMPANY = "A";
 
 export interface Container {
@@ -68,9 +70,7 @@ async function demoContainer(actingCompanyId: CompanyId): Promise<Container> {
   };
 }
 
-async function supabaseContainer(actingCompanyId: CompanyId): Promise<Container> {
-  const { createClient } = await import("../lib/supabase/server");
-  const client = await createClient();
+async function supabaseContainer(actingCompanyId: CompanyId, client: SupabaseClient): Promise<Container> {
   const transactions = new SupabaseTransactionRepository(client);
   const companies = new SupabaseCompanyRepository(client);
   const projects = new SupabaseProjectRepository(client);
@@ -92,8 +92,10 @@ async function supabaseContainer(actingCompanyId: CompanyId): Promise<Container>
 }
 
 /**
- * 合成ルート。Supabase の環境変数があれば Supabase 実装（識別＝ログインセッションの所属会社）、
- * 無ければデモ用インメモリ実装（識別＝cookieの擬似ログイン）。
+ * 合成ルート。Supabase の環境変数があれば Supabase 実装、無ければデモ用インメモリ実装。
+ * 識別（操作主体の会社）と DB クライアントは acting.ts に集約：
+ * 通常はログインセッションの所属会社＋セッションクライアント、
+ * リリース前の会社切り替え有効時のみ、上書き会社＋service_role クライアント。
  * 本番(NODE_ENV=production)では Supabase 接続を必須とする。
  */
 export async function getContainer(): Promise<Container> {
@@ -103,6 +105,7 @@ export async function getContainer(): Promise<Container> {
     }
     return demoContainer(await readDemoCompanyId());
   }
-  const ctx = await getAuthContext();
-  return supabaseContainer(ctx.companyId ?? NO_COMPANY);
+  const id = await currentCompanyId();
+  const client = await getDb();
+  return supabaseContainer(id ? CompanyId(id) : NO_COMPANY, client);
 }

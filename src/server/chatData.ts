@@ -1,5 +1,4 @@
-import { createClient } from "../lib/supabase/server";
-import { getAuthContext } from "./auth";
+import { currentCompanyId, getDb } from "./acting";
 import { rowToProject, type ProjectRow } from "../infra/supabase/mappers";
 import type { Actor } from "../domain/transaction";
 
@@ -32,11 +31,10 @@ export function chatAvailable(): boolean {
  */
 export async function loadChat(projectId: string, partnerCompanyId: string): Promise<ChatView | null | "unavailable"> {
   if (!chatAvailable()) return "unavailable";
-  const ctx = await getAuthContext();
-  const me = ctx.companyId;
+  const me = await currentCompanyId();
   if (!me) return null;
 
-  const supabase = await createClient();
+  const supabase = await getDb();
   const { data: pRow } = await supabase.from("projects").select("state").eq("id", projectId).maybeSingle();
   if (!pRow) return null;
   const project = rowToProject(pRow as unknown as ProjectRow);

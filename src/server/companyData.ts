@@ -1,4 +1,5 @@
 import { getAuthContext } from "./auth";
+import { currentCompanyId } from "./acting";
 import { createClient } from "../lib/supabase/server";
 import { rowToCompany, type CompanyRow } from "../infra/supabase/mappers";
 import { companyCreditLevel, companyFactsOf, type Company } from "../domain/company";
@@ -29,12 +30,13 @@ function metricsView(c: Company): MetricsView {
 /** 会社向け画面（ホーム/自社/会社一覧）で共通に使う実データ読み込み。 */
 export async function loadCompanyPageData(): Promise<CompanyPageData> {
   const ctx = await getAuthContext();
+  const myCompanyId = await currentCompanyId();
   const supabase = await createClient();
   const { data: rows } = await supabase.from("companies").select("*").order("created_at", { ascending: true });
   const companies = (rows ?? []).map((r) => rowToCompany(r as unknown as CompanyRow));
   const today = new Date().toISOString().slice(0, 10);
 
-  const selfCompany = companies.find((c) => c.id === ctx.companyId) ?? null;
+  const selfCompany = companies.find((c) => c.id === myCompanyId) ?? null;
   const self: SelfProfile | null = selfCompany
     ? {
         name: selfCompany.name,
@@ -65,8 +67,8 @@ export async function loadCompanyPageData(): Promise<CompanyPageData> {
     lateCount: c.metrics.lateCount,
     continuous: continuousCount(c.metrics),
     verify: c.verify as Record<string, string>,
-    isSelf: c.id === ctx.companyId,
+    isSelf: c.id === myCompanyId,
   }));
 
-  return { email: ctx.user?.email ?? "", companyId: ctx.companyId, self, companies: list };
+  return { email: ctx.user?.email ?? "", companyId: myCompanyId, self, companies: list };
 }
