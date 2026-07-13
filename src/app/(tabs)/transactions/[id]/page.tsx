@@ -10,7 +10,7 @@ export default async function TransactionDetailPage({ params }: { params: Promis
   const { id } = await params;
   const detail = await loadTxDetail(id);
   if (!detail) notFound();
-  const { tx, role, prime, partner } = detail;
+  const { tx, role, prime, partner, timeline } = detail;
 
   return (
     <AppShell title={tx.projectName} back="/transactions" noPad>
@@ -22,6 +22,7 @@ export default async function TransactionDetailPage({ params }: { params: Promis
         partner={partner}
         statusLabel={statusLabel(tx)}
         nextHint={nextHint(tx)}
+        timeline={timeline}
       />
     </AppShell>
   );

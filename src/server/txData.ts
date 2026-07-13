@@ -1,6 +1,7 @@
 import { getContainer } from "./container";
 import { availableActions, category, type Actor, type Transaction } from "@/domain/transaction";
 import { companyCreditLevel, type Company } from "@/domain/company";
+import { buildTimeline, type TimelineEntry } from "@/lib/txTimeline";
 
 export const CATEGORY_LABEL: Record<string, string> = {
   active: "進行中",
@@ -77,6 +78,7 @@ export interface TxDetailView {
   role: Actor;
   prime: CompanyBrief;
   partner: CompanyBrief;
+  timeline: TimelineEntry[];
 }
 
 function brief(company: Company | null, id: string, asPartner: boolean): CompanyBrief {
@@ -93,14 +95,16 @@ export async function loadTxDetail(id: string): Promise<TxDetailView | null> {
   const role = roleOf(tx, acting);
   if (!role) return null;
 
-  const [primeCompany, partnerCompany] = await Promise.all([
+  const [primeCompany, partnerCompany, events] = await Promise.all([
     container.loadCompany(tx.primeId as unknown as string),
     container.loadCompany(tx.partnerId as unknown as string),
+    container.timelineFor(id),
   ]);
   return {
     tx,
     role,
     prime: brief(primeCompany, tx.primeId as unknown as string, false),
     partner: brief(partnerCompany, tx.partnerId as unknown as string, true),
+    timeline: buildTimeline(events),
   };
 }

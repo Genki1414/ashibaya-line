@@ -111,7 +111,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             <InfoRow label="支払条件" value={`${project.closing}締め・${project.payTerm}払い`} />
             <InfoRow label="持ち物" value={project.belongings} />
             <InfoRow label="募集締切" value={d(project.applicationDeadline)} />
-            <InfoRow label="売掛保証" value={project.guaranteed ? "あり" : "なし"} />
+            <InfoRow label="売掛保証" value="受注時に受注側が選択" />
           </Card>
           {project.workDescription && (
             <div className="mt-2 rounded-2xl border border-(--color-brand-line) bg-white p-3.5 text-[13px] leading-relaxed text-(--color-brand-ink)">

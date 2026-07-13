@@ -85,7 +85,7 @@ describe("usecases (application layer with in-memory infra)", () => {
     if (!matched.ok) return;
     const txId = matched.data.id;
 
-    expect((await txService.accept(PARTNER, txId)).ok).toBe(true);
+    expect((await txService.accept(PARTNER, txId, true)).ok).toBe(true);
     expect((await txService.issueOrder(PRIME, txId)).ok).toBe(true);
     expect((await txService.acknowledgeOrder(PARTNER, txId)).ok).toBe(true);
 
@@ -128,7 +128,7 @@ describe("usecases (application layer with in-memory infra)", () => {
   it("rejects a non-participant with a mapped error and never mutates state", async () => {
     const matched = await matching.selectPartner(PRIME, ProjectId("p1"), PARTNER);
     if (!matched.ok) return;
-    const res = await txService.accept(OUTSIDER, matched.data.id);
+    const res = await txService.accept(OUTSIDER, matched.data.id, true);
     expect(res.ok).toBe(false);
     if (res.ok) return;
     expect(res.error.code).toBe("NOT_A_PARTICIPANT");
@@ -139,7 +139,7 @@ describe("usecases (application layer with in-memory infra)", () => {
     const matched = await matching.selectPartner(PRIME, ProjectId("p1"), PARTNER);
     if (!matched.ok) return;
     // 取引開始は協力会社のみ。元請が呼ぶと FORBIDDEN_ACTOR。
-    const res = await txService.accept(PRIME, matched.data.id);
+    const res = await txService.accept(PRIME, matched.data.id, true);
     expect(res.ok).toBe(false);
     if (res.ok) return;
     expect(res.error.message).toContain("協力会社");

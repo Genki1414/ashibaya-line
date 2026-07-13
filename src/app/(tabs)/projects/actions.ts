@@ -54,7 +54,8 @@ function parseProjectForm(fd: FormData):
       workDescription: s(fd, "work") || "詳細はチャットにて。",
       belongings: s(fd, "belongings"),
       applicationDeadline: s(fd, "deadline") || start,
-      guaranteed: s(fd, "guaranteed") === "on",
+      // 売掛保証は受注側が受注時に選択するため、案件（発注側）では常に未適用で作成する。
+      guaranteed: false,
     },
   };
 }

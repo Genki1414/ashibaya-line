@@ -59,13 +59,22 @@ function lumpTx() {
   });
 }
 
+describe("取引開始時の売掛保証（受注側の選択）", () => {
+  it("受注側が保証なしで開始した場合は guaranteed が false になる", () => {
+    const tx = unwrap(cmd.startTransaction(progressTx(), "partner", "2026-07-08", false)).transaction;
+    expect(tx.guaranteed).toBe(false);
+  });
+});
+
 describe("Transaction two-phase engine (progress)", () => {
   it("drives assembly to completion while dismantle work is gated only on assembly work confirmation, not billing", () => {
     let tx = progressTx();
 
-    expect(cmd.startTransaction(tx, "prime", "2026-07-08").ok).toBe(false);
-    tx = unwrap(cmd.startTransaction(tx, "partner", "2026-07-08")).transaction;
+    expect(cmd.startTransaction(tx, "prime", "2026-07-08", true).ok).toBe(false);
+    tx = unwrap(cmd.startTransaction(tx, "partner", "2026-07-08", true)).transaction;
     expect(tx.startedAt).toBe("2026-07-08");
+    // 売掛保証は受注側が取引開始時に選択する
+    expect(tx.guaranteed).toBe(true);
 
     tx = unwrap(cmd.issueOrder(tx, "prime", "2026-07-08")).transaction;
     tx = unwrap(cmd.acknowledgeOrder(tx, "partner", "2026-07-08")).transaction;
@@ -126,7 +135,7 @@ describe("Transaction two-phase engine (progress)", () => {
 describe("Transaction two-phase engine (lump)", () => {
   it("never bills the assembly phase and completes on the dismantle deposit alone", () => {
     let tx = lumpTx();
-    tx = unwrap(cmd.startTransaction(tx, "partner", "2026-07-02")).transaction;
+    tx = unwrap(cmd.startTransaction(tx, "partner", "2026-07-02", true)).transaction;
     tx = unwrap(cmd.startWork(tx, "assembly", "partner", { date: "2026-08-03", people: 3 }, "2026-08-03")).transaction;
     tx = unwrap(
       cmd.reportWorkCompletion(tx, "assembly", "partner", { date: "2026-08-03", days: 1, people: 3, content: "組立完了", photoCount: 1 }, "2026-08-03"),

@@ -69,11 +69,15 @@ function checkCompletion(tx: Transaction, at: IsoDate): CommandResult {
 
 /* ============================ 取引開始・契約書類 ============================ */
 
-export function startTransaction(tx: Transaction, actor: Actor, at: IsoDate): Result<CommandResult> {
+/**
+ * 取引開始（受注側の受諾）。売掛保証を適用するかどうかは、代金を受け取る受注側が
+ * この受諾時に選択する（発注側＝元請ではなく受注側の判断）。
+ */
+export function startTransaction(tx: Transaction, actor: Actor, at: IsoDate, guaranteed: boolean): Result<CommandResult> {
   const guard = requireActor(actor, "partner", "取引開始");
   if (!guard.ok) return guard;
   if (tx.startedAt) return err(new DomainError("TRANSACTION_ALREADY_STARTED", "取引はすでに開始されています"));
-  const transaction: Transaction = { ...tx, startedAt: at };
+  const transaction: Transaction = { ...tx, startedAt: at, guaranteed };
   const event = createEvent("TransactionStarted", at, { transactionId: tx.id, startedBy: tx.partnerId });
   return ok({ transaction, events: [event] });
 }

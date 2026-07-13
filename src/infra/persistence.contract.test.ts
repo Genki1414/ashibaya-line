@@ -51,7 +51,7 @@ function richTransaction() {
   const step = (r: ReturnType<typeof cmd.startTransaction>) => {
     tx = unwrap(r).transaction;
   };
-  step(cmd.startTransaction(tx, "partner", "2026-07-08"));
+  step(cmd.startTransaction(tx, "partner", "2026-07-08", true));
   step(cmd.issueOrder(tx, "prime", "2026-07-08"));
   step(cmd.acknowledgeOrder(tx, "partner", "2026-07-08"));
   step(cmd.linkAshiBase(tx, "prime", "2026-07-08"));

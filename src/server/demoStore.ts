@@ -81,7 +81,7 @@ const drive = (tx: Transaction, steps: Step[]): Transaction => steps.reduce((acc
 function seedTransactions(): Transaction[] {
   // 1) 組立の完了報告済み → 元請の「完了確認 / 是正依頼」が要対応
   const t1 = drive(progressTx("t1", "工場外壁 足場（組立・解体）", "B"), [
-    step((t) => cmd.startTransaction(t, "partner", AT)),
+    step((t) => cmd.startTransaction(t, "partner", AT, true)),
     step((t) => cmd.issueOrder(t, "prime", AT)),
     step((t) => cmd.acknowledgeOrder(t, "partner", AT)),
     step((t) => cmd.startWork(t, "assembly", "partner", { date: "2026-07-08", people: 2 }, AT)),
@@ -90,7 +90,7 @@ function seedTransactions(): Transaction[] {
 
   // 2) 組立確認済み・支払い済み → 協力の「入金確認」が要対応
   const t2 = drive(progressTx("t2", "マンション改修 足場", "B"), [
-    step((t) => cmd.startTransaction(t, "partner", AT)),
+    step((t) => cmd.startTransaction(t, "partner", AT, true)),
     step((t) => cmd.startWork(t, "assembly", "partner", { date: "2026-07-08", people: 2 }, AT)),
     step((t) => cmd.reportWorkCompletion(t, "assembly", "partner", { date: "2026-07-09", days: 2, people: 2, content: "組立完了", photoCount: 2 }, AT)),
     step((t) => cmd.confirmWork(t, "assembly", "prime", AT)),
@@ -101,7 +101,7 @@ function seedTransactions(): Transaction[] {
 
   // 3) 是正・手直し中 → 協力の「是正・手直し完了」が要対応
   const t3 = drive(progressTx("t3", "店舗改装 足場", "B"), [
-    step((t) => cmd.startTransaction(t, "partner", AT)),
+    step((t) => cmd.startTransaction(t, "partner", AT, true)),
     step((t) => cmd.startWork(t, "assembly", "partner", { date: "2026-07-08", people: 2 }, AT)),
     step((t) => cmd.reportWorkCompletion(t, "assembly", "partner", { date: "2026-07-09", days: 2, people: 2, content: "組立完了", photoCount: 2 }, AT)),
     step((t) => cmd.requestRework(t, "assembly", "prime", "3階北側の手すりに隙間あり。基準に合わせて是正してください。", AT)),
