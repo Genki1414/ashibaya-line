@@ -1,8 +1,9 @@
 import { getContainer } from "./container";
 import { listProjects } from "./projectData";
 import { loadUnreadChats } from "./chatData";
+import { hasUnackedChange } from "./txData";
 
-export type NotificationKind = "応募" | "選定" | "受注" | "チャット";
+export type NotificationKind = "応募" | "選定" | "受注" | "チャット" | "変更";
 
 export interface AppNotification {
   kind: NotificationKind;
@@ -50,6 +51,11 @@ export async function loadNotifications(): Promise<AppNotification[]> {
     }
     if (isPrime && t.startedAt !== null && !t.order.order) {
       items.push({ kind: "受注", title: `「${t.projectName}」`, body: "受注されました。注文書を発行してください", href: `/transactions/${id}` });
+    }
+    // 元請による工期・案件情報の変更は、受注側に確認を求める。
+    if (isPartner && hasUnackedChange(t)) {
+      const kinds = [t.scheduleNotice && !t.scheduleNotice.acknowledged ? "工期・予定" : null, t.infoNotice && !t.infoNotice.acknowledged ? "案件情報" : null].filter(Boolean).join("・");
+      items.push({ kind: "変更", title: `「${t.projectName}」`, body: `${kinds}の変更があります。内容を確認してください`, href: `/transactions/${id}` });
     }
   }
 

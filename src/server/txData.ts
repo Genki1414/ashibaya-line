@@ -2,6 +2,7 @@ import { getContainer } from "./container";
 import { activePhaseKeys, availableActions, category, type Actor, type Transaction } from "@/domain/transaction";
 import { companyCreditLevel, type Company } from "@/domain/company";
 import { buildTimeline, type TimelineEntry } from "@/lib/txTimeline";
+import { loadUnreadChats } from "./chatData";
 
 export const CATEGORY_LABEL: Record<string, string> = {
   active: "進行中",
@@ -30,6 +31,13 @@ function totalAmount(tx: Transaction): number {
   return activePhaseKeys(tx).reduce((sum, phase) => sum + (tx.phases[phase].amount ?? 0), 0);
 }
 
+/** 未確認の変更（工期・案件情報）があるか。関係先に「変更内容があります」を出す判定。 */
+export function hasUnackedChange(tx: Transaction): boolean {
+  const s = tx.scheduleNotice && !tx.scheduleNotice.acknowledged;
+  const i = tx.infoNotice && !tx.infoNotice.acknowledged;
+  return Boolean(s || i);
+}
+
 export interface TxCardView {
   id: string;
   projectName: string;
@@ -41,14 +49,21 @@ export interface TxCardView {
   amount: number;
   region: string;
   completed: boolean;
+  hasChange: boolean;
+  unread: number;
 }
 
 /** 自社が当事者（元請 or 協力）の取引一覧。RLSにより関係する取引のみ返る。 */
 export async function listMyTransactions(): Promise<TxCardView[]> {
   const container = await getContainer();
   const acting = container.actingCompanyId as unknown as string;
-  const [txs, companies] = await Promise.all([container.listTransactionsForActing(), container.listCompanies()]);
+  const [txs, companies, unreadChats] = await Promise.all([
+    container.listTransactionsForActing(),
+    container.listCompanies(),
+    loadUnreadChats(),
+  ]);
   const nameById = new Map(companies.map((c) => [c.id, c.name]));
+  const unreadByChatKey = new Map(unreadChats.map((c) => [c.chatKey, c.count]));
 
   return txs.map((tx) => {
     const role = roleOf(tx, acting) ?? "partner";
@@ -64,6 +79,8 @@ export async function listMyTransactions(): Promise<TxCardView[]> {
       amount: totalAmount(tx),
       region: tx.region,
       completed: tx.status === "completed",
+      hasChange: hasUnackedChange(tx),
+      unread: unreadByChatKey.get(tx.chatKey as string) ?? 0,
     };
   });
 }
