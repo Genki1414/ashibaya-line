@@ -136,44 +136,47 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           </div>
         )}
 
-        {/* 応募一覧（元請にのみ選定ボタン表示） */}
-        <div>
-          <SectionLabel text={`応募会社（${applicants.length}）`} />
-          {applicants.length === 0 ? (
-            <div className="rounded-2xl border border-(--color-brand-line) bg-white p-5 text-center text-[13px] text-(--color-brand-sub)">
-              まだ応募はありません。
-            </div>
-          ) : (
-            <div className="space-y-2.5">
-              {applicants.map((a) => (
-                <Card key={a.id}>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-[14.5px] font-bold text-(--color-brand-ink)">
-                        {a.name}
-                        {a.id === myCompanyId && <span className="ml-1 text-[11px] text-(--color-brand-blue)">（自社）</span>}
+        {/* 応募一覧は元請本人にのみ表示（第三者・他の応募者からは閲覧不可） */}
+        {isPrime && (
+          <div>
+            <SectionLabel text={`応募会社（${applicants.length}）`} />
+            {applicants.length === 0 ? (
+              <div className="rounded-2xl border border-(--color-brand-line) bg-white p-5 text-center text-[13px] text-(--color-brand-sub)">
+                まだ応募はありません。
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {applicants.map((a) => (
+                  <Card key={a.id}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-[14.5px] font-bold text-(--color-brand-ink)">{a.name}</div>
+                        <div className="mt-0.5 text-[12px] text-(--color-brand-sub)">{a.region}・完了{a.metrics.completed}件</div>
                       </div>
-                      <div className="mt-0.5 text-[12px] text-(--color-brand-sub)">{a.region}・完了{a.metrics.completed}件</div>
+                      <LevelBadge level={companyCreditLevel(a, true)} />
                     </div>
-                    <LevelBadge level={companyCreditLevel(a, true)} />
-                  </div>
-                  {isPrime && recruiting && (
-                    <div className="mt-3 flex">
-                      <SelectButton projectId={project.id as unknown as string} partnerId={a.id} />
-                    </div>
-                  )}
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
+                    {recruiting && (
+                      <div className="mt-3 flex">
+                        <SelectButton projectId={project.id as unknown as string} partnerId={a.id} />
+                      </div>
+                    )}
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
-        {/* 応募アクション（非元請の会社向け） */}
+        {/* 応募アクション／状態（非元請の会社向け。自分の応募状態のみ表示） */}
         {!isPrime && myCompanyId && (
           <div className="pt-1">
-            {alreadyApplied ? (
-              <div className="rounded-xl bg-(--color-brand-green-soft) px-3 py-3 text-center text-[13.5px] font-bold text-(--color-brand-green)">
-                応募済みです。元請の選定をお待ちください。
+            {alreadyApplied && recruiting ? (
+              <div className="rounded-xl bg-(--color-brand-blue-soft) px-3 py-3 text-center text-[13.5px] font-bold text-(--color-brand-blue)">
+                応募中です。元請の選定をお待ちください。
+              </div>
+            ) : alreadyApplied && !recruiting ? (
+              <div className="rounded-xl bg-(--color-brand-bg) px-3 py-3 text-center text-[13px] text-(--color-brand-sub)">
+                この案件の選定は終了しました。受注できた場合は「取引」タブに表示されます。
               </div>
             ) : !recruiting ? (
               <div className="rounded-xl bg-(--color-brand-bg) px-3 py-3 text-center text-[13px] text-(--color-brand-sub)">
