@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { postProjectAction, type ProjectActionResult } from "../actions";
+import { MoneyInput } from "@/components/ui/MoneyInput";
 
 const input = "w-full rounded-lg border border-(--color-brand-line) px-3 py-2 text-[14px]";
 const label = "mb-1 block text-[12.5px] font-bold text-(--color-brand-sub)";
@@ -15,6 +16,10 @@ export function PostJobForm() {
     <form action={formAction} className="space-y-3.5">
       <input type="hidden" name="jobType" value={jobType} />
       <input type="hidden" name="payType" value={payType} />
+
+      <div className="rounded-xl border border-(--color-brand-blue-light) bg-(--color-brand-blue-soft) p-3 text-[12.5px] leading-relaxed text-(--color-brand-sub)">
+        公開すると（LINE連携時は）グループへ新着通知が届きます。募集の入口はLINE、正式な取引はこのアプリで記録します。
+      </div>
 
       <div>
         <label className={label}>案件種別</label>
@@ -47,7 +52,7 @@ export function PostJobForm() {
         <div className="flex-1"><label className={label}>解体 完了</label><input name="dismantleEnd" type="date" className={input} /></div>
       </div>
 
-      <div><label className={label}>{jobType === "contract" ? "請負金額（円）" : "単価（日額・円）"} <span className="text-(--color-brand-red)">必須</span></label><input name="unitPrice" type="number" required className={input} /></div>
+      <div><label className={label}>{jobType === "contract" ? "請負金額（円）" : "単価（日額・円）"} <span className="text-(--color-brand-red)">必須</span></label><MoneyInput name="unitPrice" required placeholder="22,000" /></div>
 
       <div>
         <label className={label}>支払い方式</label>
@@ -71,7 +76,7 @@ export function PostJobForm() {
         <div className="rounded-lg bg-(--color-brand-red-soft) px-3 py-2 text-[12.5px] font-semibold text-(--color-brand-red)">{state.error}</div>
       )}
       <button type="submit" disabled={pending} className="w-full rounded-xl bg-(--color-brand-blue) py-3 text-[14.5px] font-bold text-white disabled:opacity-50">
-        {pending ? "公開中…" : "案件を公開する"}
+        {pending ? "公開中…" : "案件を公開する（LINEへ通知）"}
       </button>
     </form>
   );
