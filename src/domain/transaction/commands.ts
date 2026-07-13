@@ -21,6 +21,7 @@ import {
   WorkReport,
   completeRework as completeReworkTrack,
   confirm as confirmWorkTrack,
+  countWorkedDays,
   recordDailySession as recordDailySessionTrack,
   reportCompletion as reportCompletionTrack,
   requestRework as requestReworkTrack,
@@ -151,9 +152,12 @@ export function reportWorkCompletion(
 ): Result<CommandResult> {
   const guard = requireActor(actor, "partner", "完了報告");
   if (!guard.ok) return guard;
-  return andThen(reportCompletionTrack(tx.phases[phase].work, report), (work) => {
+  // のべ作業日数は日次の作業報告＋完了日から自動計算する（手入力は受け付けない）。
+  const days = countWorkedDays(tx.phases[phase].work, report.date);
+  const finalReport: WorkReport = { ...report, days };
+  return andThen(reportCompletionTrack(tx.phases[phase].work, finalReport), (work) => {
     const transaction = withPhase(tx, phase, { work });
-    const event = createEvent("WorkCompletionReported", at, { transactionId: tx.id, phase, date: report.date, days: report.days });
+    const event = createEvent("WorkCompletionReported", at, { transactionId: tx.id, phase, date: report.date, days });
     return ok({ transaction, events: [event] });
   });
 }
