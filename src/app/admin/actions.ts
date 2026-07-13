@@ -56,6 +56,20 @@ export async function createCompany(_prev: AdminActionResult | null, formData: F
   }
 }
 
+/** 本部による会社の承認/停止。status は本人が変更できず、この管理処理（service_role）のみが更新する。 */
+export async function setCompanyStatus(formData: FormData): Promise<void> {
+  await assertAdmin();
+  const companyId = String(formData.get("companyId") ?? "").trim();
+  const status = String(formData.get("status") ?? "").trim();
+  if (!companyId || !["pending", "active", "suspended"].includes(status)) return;
+
+  const admin = createAdminClient();
+  const patch: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
+  if (status === "active") patch.approved_at = new Date().toISOString();
+  await admin.from("companies").update(patch).eq("id", companyId);
+  revalidatePath("/admin");
+}
+
 /** 会社メンバー（ログイン用アカウント）の作成。auth ユーザーを発行し company_users に紐付ける。 */
 export async function createMember(_prev: AdminActionResult | null, formData: FormData): Promise<AdminActionResult> {
   try {

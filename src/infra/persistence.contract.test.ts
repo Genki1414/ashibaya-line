@@ -110,6 +110,7 @@ describe("persistence contract: mapper round-trip through the JSONB boundary", (
       registeredAt: "2024-03-01",
       verify,
       metrics: { ...initialCompanyMetrics, completed: 24, paidCount: 24, onTimeCount: 24, avgPayDays: 28, continuousPartnerIds: [PARTNER] },
+      status: "active",
     };
     const row = JSON.parse(JSON.stringify(companyToRow(company)));
     expect(rowToCompany(row)).toEqual(company);
@@ -176,6 +177,7 @@ describe("persistence contract: repository save -> load full restoration", () =>
         sole: "none", qual: "verified", harness: "reviewing",
       } as VerifyRecord,
       metrics: { ...initialCompanyMetrics, completed: 5, paidCount: 5, onTimeCount: 4, lateCount: 1, avgPayDays: 33 },
+      status: "active",
     };
     await companies.save(company);
     expect(await companies.load(PARTNER)).toEqual(company);

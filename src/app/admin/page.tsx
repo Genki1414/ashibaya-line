@@ -6,6 +6,7 @@ import { rowToCompany, type CompanyRow } from "@/infra/supabase/mappers";
 import { companyCreditLevel } from "@/domain/company";
 import { signOut } from "@/app/(auth)/actions";
 import { AdminForms } from "./AdminForms";
+import { setCompanyStatus } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,14 @@ interface CompanyView {
   level: string;
   completed: number;
   members: string[];
+  status: string;
 }
+
+const STATUS_META: Record<string, { label: string; color: string; bg: string }> = {
+  pending: { label: "承認待ち", color: "var(--color-brand-amber)", bg: "var(--color-brand-amber-soft)" },
+  active: { label: "承認済み", color: "var(--color-brand-green)", bg: "var(--color-brand-green-soft)" },
+  suspended: { label: "停止中", color: "var(--color-brand-red)", bg: "var(--color-brand-red-soft)" },
+};
 
 export default async function AdminPage() {
   const ctx = await getAuthContext();
@@ -55,6 +63,7 @@ export default async function AdminPage() {
     level: companyCreditLevel(c, false),
     completed: c.metrics.completed,
     members: membersByCompany.get(c.id) ?? [],
+    status: c.status ?? "active",
   }));
 
   return (
@@ -91,14 +100,43 @@ export default async function AdminPage() {
         )}
         {views.map((c) => (
           <div key={c.id} className="rounded-xl border border-(--color-brand-line) bg-white p-3">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-[14px] font-bold text-(--color-brand-ink)">{c.name}</span>
+              <span
+                className="rounded-full px-2 py-0.5 text-[11px] font-bold"
+                style={{ color: STATUS_META[c.status]?.color, background: STATUS_META[c.status]?.bg }}
+              >
+                {STATUS_META[c.status]?.label ?? c.status}
+              </span>
               <span className="rounded-full bg-(--color-brand-blue-light) px-2 py-0.5 text-[11px] font-bold text-(--color-brand-blue)">{LEVEL_JP[c.level] ?? c.level}</span>
               <span className="ml-auto text-[11.5px] text-(--color-brand-sub)">取引完了 {c.completed}</span>
             </div>
             <div className="mt-1 text-[11.5px] text-(--color-brand-sub)">{c.region || "地域未設定"}</div>
             <div className="mt-1 text-[11.5px] text-(--color-brand-sub)">
               メンバー：{c.members.length > 0 ? c.members.join("、 ") : "未登録"}
+            </div>
+            <div className="mt-2 flex gap-2">
+              {c.status !== "active" && (
+                <form action={setCompanyStatus}>
+                  <input type="hidden" name="companyId" value={c.id} />
+                  <input type="hidden" name="status" value="active" />
+                  <button className="rounded-lg bg-(--color-brand-green) px-3 py-1.5 text-[12px] font-bold text-white">承認する（発注・受注を解禁）</button>
+                </form>
+              )}
+              {c.status !== "suspended" && (
+                <form action={setCompanyStatus}>
+                  <input type="hidden" name="companyId" value={c.id} />
+                  <input type="hidden" name="status" value="suspended" />
+                  <button className="rounded-lg border border-(--color-brand-red) px-3 py-1.5 text-[12px] font-bold text-(--color-brand-red)">停止</button>
+                </form>
+              )}
+              {c.status === "suspended" && (
+                <form action={setCompanyStatus}>
+                  <input type="hidden" name="companyId" value={c.id} />
+                  <input type="hidden" name="status" value="pending" />
+                  <button className="rounded-lg border border-(--color-brand-line) px-3 py-1.5 text-[12px] font-bold text-(--color-brand-sub)">停止解除（承認待ちへ）</button>
+                </form>
+              )}
             </div>
           </div>
         ))}

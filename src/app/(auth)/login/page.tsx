@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { LoginForm } from "./LoginForm";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +16,9 @@ export default function LoginPage() {
         <Suspense>
           <LoginForm />
         </Suspense>
+        <div className="mt-4 text-center text-[12.5px] text-(--color-brand-sub)">
+          はじめての方は <Link href="/signup" className="font-bold text-(--color-brand-blue)">会社を新規登録</Link>
+        </div>
       </div>
     </div>
   );

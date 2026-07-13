@@ -1,2 +1,2 @@
-export { companyCreditLevel, companyFactsOf } from "./Company";
-export type { Company } from "./Company";
+export { companyCreditLevel, companyFactsOf, canTransact } from "./Company";
+export type { Company, CompanyStatus } from "./Company";
