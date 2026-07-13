@@ -57,6 +57,13 @@ export interface ScheduleNotice {
   readonly acknowledged: boolean;
 }
 
+/** 案件情報（現場・金額）の変更を関係先へ通知し、確認を求める。 */
+export interface InfoNotice {
+  readonly changes: readonly InfoChange[];
+  readonly notifiedAt: IsoDate;
+  readonly acknowledged: boolean;
+}
+
 export interface AshiBaseLink {
   readonly linked: boolean;
   readonly linkedAt: IsoDate | null;
@@ -92,6 +99,7 @@ export interface Transaction {
   readonly issues: readonly Issue[];
   readonly consultations: readonly Consultation[];
   readonly scheduleNotice: ScheduleNotice | null;
+  readonly infoNotice: InfoNotice | null;
   readonly ashibase: AshiBaseLink;
   /** 「取引が開始されました」（協力会社が受諾した時点）。null なら未受諾。 */
   readonly startedAt: IsoDate | null;

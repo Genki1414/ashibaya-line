@@ -195,6 +195,13 @@ describe("案件情報の変更（元請）", () => {
     expect(tx.address).toBe("石巻市中央");
     expect(tx.phases.assembly.amount).toBe(250000);
     expect(r.events.some((e) => e.name === "TransactionInfoUpdated")).toBe(true);
+
+    // 関係先へ変更通知が立ち、受注側の確認で解消する。
+    expect(tx.infoNotice?.acknowledged).toBe(false);
+    expect(tx.infoNotice?.changes.length).toBeGreaterThan(0);
+    expect(cmd.acknowledgeInfo(tx, "prime", "2026-07-08").ok).toBe(false);
+    tx = unwrap(cmd.acknowledgeInfo(tx, "partner", "2026-07-08")).transaction;
+    expect(tx.infoNotice?.acknowledged).toBe(true);
   });
 
   it("請求が始まったフェーズの金額は変更できない", () => {

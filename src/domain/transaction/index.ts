@@ -69,6 +69,7 @@ export {
   changeSchedule,
   acknowledgeSchedule,
   updateTransactionInfo,
+  acknowledgeInfo,
   linkAshiBase,
 } from "./commands";
 export type { CommandResult, ScheduleChangeInput, TransactionInfoInput } from "./commands";

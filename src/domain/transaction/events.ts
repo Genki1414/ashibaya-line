@@ -25,6 +25,7 @@ export type ConsultationRequestedPayload = Base & { readonly requestedBy: Compan
 export type ScheduleChangedPayload = Base & { readonly changes: readonly ScheduleChange[] };
 export type ScheduleAcknowledgedPayload = Base;
 export type TransactionInfoUpdatedPayload = Base & { readonly changes: readonly InfoChange[] };
+export type InfoAcknowledgedPayload = Base;
 export type AshiBaseLinkedPayload = Base;
 export type TransactionCompletedPayload = Base & {
   readonly primeId: CompanyId;
@@ -54,5 +55,6 @@ export type TransactionEvent =
   | DomainEvent<"ScheduleChanged", ScheduleChangedPayload>
   | DomainEvent<"ScheduleAcknowledged", ScheduleAcknowledgedPayload>
   | DomainEvent<"TransactionInfoUpdated", TransactionInfoUpdatedPayload>
+  | DomainEvent<"InfoAcknowledged", InfoAcknowledgedPayload>
   | DomainEvent<"AshiBaseLinked", AshiBaseLinkedPayload>
   | DomainEvent<"TransactionCompleted", TransactionCompletedPayload>;

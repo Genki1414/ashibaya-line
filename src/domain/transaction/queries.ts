@@ -147,7 +147,7 @@ const BILL_ACTION_KEY: Record<BillActionDescriptor["kind"], string> = {
   confirmDeposit: "confirmDeposit",
 };
 
-export type ActionSection = "transaction" | "order" | "assembly" | "dismantle" | "issue" | "schedule";
+export type ActionSection = "transaction" | "order" | "assembly" | "dismantle" | "issue" | "schedule" | "info";
 
 /**
  * ある役割（元請/協力）が「今この取引で実行できる操作」の一覧。
@@ -206,6 +206,9 @@ export function availableActions(tx: Transaction, role: Actor): AvailableAction[
   }
   if (tx.scheduleNotice && !tx.scheduleNotice.acknowledged && role === "partner") {
     actions.push({ key: "acknowledgeSchedule", label: "工期・予定変更を確認", urgent: true, section: "schedule" });
+  }
+  if (tx.infoNotice && !tx.infoNotice.acknowledged && role === "partner") {
+    actions.push({ key: "acknowledgeInfo", label: "案件情報の変更を確認", urgent: true, section: "info" });
   }
   return actions;
 }
