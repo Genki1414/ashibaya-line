@@ -7,8 +7,8 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
  * 秘密鍵は NEXT_PUBLIC を付けず、サーバー実行時のみ参照する。
  */
 export function createAdminClient(): SupabaseClient {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   if (!url || !serviceKey) {
     throw new Error("Supabase の管理クライアントには NEXT_PUBLIC_SUPABASE_URL と SUPABASE_SERVICE_ROLE_KEY が必要です");
   }
