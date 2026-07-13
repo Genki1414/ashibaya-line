@@ -21,7 +21,7 @@ export default async function ChatPage({ params }: { params: Promise<{ id: strin
 
   return (
     <AppShell title={`チャット：${chat.counterpartyName}`} back={`/projects/${id}`} noPad hideNav>
-      <ChatBox projectId={chat.projectId} partnerCompanyId={chat.partnerCompanyId} role={chat.role} messages={chat.messages} />
+      <ChatBox projectId={chat.projectId} partnerCompanyId={chat.partnerCompanyId} role={chat.role} messages={chat.messages} counterpartyReadAt={chat.counterpartyReadAt} />
     </AppShell>
   );
 }

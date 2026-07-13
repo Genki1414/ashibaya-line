@@ -1,4 +1,5 @@
 import { currentCompanyId, getDb } from "./acting";
+import { createAdminClient } from "../lib/supabase/admin";
 import { rowToProject, type ProjectRow } from "../infra/supabase/mappers";
 import type { Actor } from "../domain/transaction";
 
@@ -17,6 +18,8 @@ export interface ChatView {
   role: Actor;
   counterpartyName: string;
   messages: ChatMessage[];
+  /** 相手が最後にこのチャットを既読にした時刻（ISO）。自分の送信メッセージの「既読」表示に使う。 */
+  counterpartyReadAt: string | null;
 }
 
 /** チャットは Supabase 接続時のみ（デモ/インメモリでは無効）。 */
@@ -122,10 +125,21 @@ export async function loadChat(projectId: string, partnerCompanyId: string): Pro
   if (!applied) return null;
 
   const chatKey = `${projectId}:${partnerCompanyId}`;
+  const counterpartyId = role === "prime" ? partnerCompanyId : primeId;
   const [{ data: msgs }, { data: cRow }] = await Promise.all([
     supabase.from("messages").select("id, sender_role, text, created_at").eq("chat_key", chatKey).order("created_at", { ascending: true }),
-    supabase.from("companies").select("name").eq("id", role === "prime" ? partnerCompanyId : primeId).maybeSingle(),
+    supabase.from("companies").select("name").eq("id", counterpartyId).maybeSingle(),
   ]);
+
+  // 相手の既読時刻は「相手の会社」の chat_reads。RLS（自社のみ可）をまたぐため service_role で読む。
+  let counterpartyReadAt: string | null = null;
+  try {
+    const admin = createAdminClient();
+    const { data: cr } = await admin.from("chat_reads").select("last_read_at").eq("chat_key", chatKey).eq("company_id", counterpartyId).maybeSingle();
+    counterpartyReadAt = (cr as { last_read_at?: string } | null)?.last_read_at ?? null;
+  } catch {
+    // service_role 未設定・テーブル未作成などは既読表示なしにフォールバック
+  }
 
   return {
     chatKey,
@@ -133,10 +147,11 @@ export async function loadChat(projectId: string, partnerCompanyId: string): Pro
     partnerCompanyId,
     projectName: project.name,
     role,
-    counterpartyName: (cRow as { name?: string } | null)?.name ?? (role === "prime" ? partnerCompanyId : primeId),
+    counterpartyName: (cRow as { name?: string } | null)?.name ?? counterpartyId,
     messages: (msgs ?? []).map((m) => {
       const r = m as { id: string; sender_role: Actor; text: string; created_at: string };
       return { id: r.id, senderRole: r.sender_role, text: r.text, createdAt: r.created_at };
     }),
+    counterpartyReadAt,
   };
 }
