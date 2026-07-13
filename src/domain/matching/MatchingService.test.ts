@@ -35,7 +35,7 @@ function recruitingProject() {
 }
 
 describe("selectPartnerForProject", () => {
-  it("opens a transaction that splits the support-job amount 50/50 across assembly and dismantle", () => {
+  it("opens a single-phase transaction for a support job (full amount on the work phase, no dismantle)", () => {
     const project = recruitingProject();
     const result = unwrap(
       selectPartnerForProject(project, PARTNER_B, { transactionId: TransactionId("t1"), chatKey: "p1:B", at: "2026-07-10" }),
@@ -44,8 +44,9 @@ describe("selectPartnerForProject", () => {
     expect(result.project.stage).toBe("matched");
     expect(result.transaction.primeId).toBe(PRIME);
     expect(result.transaction.partnerId).toBe(PARTNER_B);
-    expect(result.transaction.phases.assembly.amount).toBe(22000);
-    expect(result.transaction.phases.dismantle.amount).toBe(22000);
+    // 応援は単相：全額（日額×人数）を作業フェーズに置き、解体は使わない。
+    expect(result.transaction.phases.assembly.amount).toBe(44000);
+    expect(result.transaction.phases.dismantle.amount).toBeNull();
     expect(result.events.some((event) => event.name === "ProjectMatched")).toBe(true);
   });
 
