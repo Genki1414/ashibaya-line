@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAuthContext } from "./auth";
@@ -17,19 +18,19 @@ export function actingSwitchEnabled(): boolean {
 }
 
 /** 切り替えが有効かつ Cookie に上書き会社が指定されているときだけ、その会社IDを返す。 */
-async function overrideCompanyId(): Promise<string | null> {
+const overrideCompanyId = cache(async function overrideCompanyId(): Promise<string | null> {
   if (!actingSwitchEnabled()) return null;
   const value = (await cookies()).get(ACTING_COMPANY_COOKIE)?.value?.trim();
   return value ? value : null;
-}
+});
 
 /** いま操作主体となる会社ID。切り替え上書きがあればそれ、無ければログインセッションの所属会社。 */
-export async function currentCompanyId(): Promise<string | null> {
+export const currentCompanyId = cache(async function currentCompanyId(): Promise<string | null> {
   const override = await overrideCompanyId();
   if (override) return override;
   const ctx = await getAuthContext();
   return ctx.companyId;
-}
+});
 
 /** 切り替えが実際に効いているか（テスト表示中バッジの判定などに使う）。 */
 export async function actingOverrideActive(): Promise<boolean> {
