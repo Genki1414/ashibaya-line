@@ -19,7 +19,7 @@ export default async function TransactionDetailPage({ params }: { params: Promis
   const unread = unreadChats.find((c) => c.chatKey === (tx.chatKey as string))?.count ?? 0;
   const chat: EmbeddedChat | null =
     chatDetail && chatDetail !== "unavailable"
-      ? { projectId: chatDetail.projectId, partnerCompanyId: chatDetail.partnerCompanyId, role: chatDetail.role, messages: chatDetail.messages, unread }
+      ? { projectId: chatDetail.projectId, partnerCompanyId: chatDetail.partnerCompanyId, role: chatDetail.role, messages: chatDetail.messages, unread, counterpartyReadAt: chatDetail.counterpartyReadAt }
       : null;
 
   return (

@@ -22,12 +22,14 @@ export function ChatBox({
   partnerCompanyId,
   role,
   messages,
+  counterpartyReadAt,
   embedded = false,
 }: {
   projectId: string;
   partnerCompanyId: string;
   role: Actor;
   messages: ChatMessage[];
+  counterpartyReadAt: string | null;
   embedded?: boolean;
 }) {
   const router = useRouter();
@@ -39,6 +41,15 @@ export function ChatBox({
   useEffect(() => {
     void markChatReadAction(projectId, partnerCompanyId);
   }, [projectId, partnerCompanyId, messages.length]);
+
+  // LINE風に、相手が読んだ「自分の最後のメッセージ」にだけ「既読」を表示する。
+  const readMs = counterpartyReadAt ? new Date(counterpartyReadAt).getTime() : null;
+  let lastReadMineId: string | null = null;
+  if (readMs != null) {
+    for (const m of messages) {
+      if (m.senderRole === role && new Date(m.createdAt).getTime() <= readMs) lastReadMineId = m.id;
+    }
+  }
 
   const submit = () => {
     const body = text.trim();
@@ -78,8 +89,9 @@ export function ChatBox({
                   >
                     {m.text}
                   </div>
-                  <div className={`mt-0.5 text-[10.5px] text-(--color-brand-faint) ${mine ? "text-right" : "text-left"}`}>
-                    {m.senderRole === "prime" ? "元請" : "協力"}・{timeOf(m.createdAt)}
+                  <div className={`mt-0.5 flex items-center gap-1.5 text-[10.5px] text-(--color-brand-faint) ${mine ? "justify-end" : "justify-start"}`}>
+                    {mine && m.id === lastReadMineId && <span className="font-bold text-(--color-brand-blue)">既読</span>}
+                    <span>{m.senderRole === "prime" ? "元請" : "協力"}・{timeOf(m.createdAt)}</span>
                   </div>
                 </div>
               </div>

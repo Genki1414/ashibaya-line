@@ -17,6 +17,7 @@ export interface EmbeddedChat {
   role: Actor;
   messages: ChatMessage[];
   unread: number;
+  counterpartyReadAt: string | null;
 }
 
 type Field = {
@@ -328,7 +329,7 @@ export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, ne
         <div className="mb-2 text-[12px] text-(--color-brand-sub)">応募時からのやり取りをそのまま継続できます。</div>
         {chat ? (
           <>
-            <ChatBox projectId={chat.projectId} partnerCompanyId={chat.partnerCompanyId} role={chat.role} messages={chat.messages} embedded />
+            <ChatBox projectId={chat.projectId} partnerCompanyId={chat.partnerCompanyId} role={chat.role} messages={chat.messages} counterpartyReadAt={chat.counterpartyReadAt} embedded />
             <div className="mt-2 text-right">
               <Link href={`/projects/${chat.projectId}/chat/${chat.partnerCompanyId}`} className="text-[12.5px] font-bold text-(--color-brand-blue)">
                 全画面で開く ›
