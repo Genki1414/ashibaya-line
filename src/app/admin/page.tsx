@@ -68,18 +68,19 @@ export default async function AdminPage() {
   }));
 
   return (
-    <div className="mx-auto min-h-dvh max-w-[720px] p-4">
-      <header className="mb-4 flex items-center gap-2">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-(--color-brand-blue) text-[15px] font-black text-white">足</span>
+    <div className="min-h-dvh bg-(--color-brand-bg)">
+      <header className="flex items-center gap-2 bg-(--color-brand-blue) px-4 py-3 text-white">
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/20 text-[13px] font-black">足</span>
         <div className="flex-1">
-          <div className="text-[15px] font-bold text-(--color-brand-ink)">本部管理</div>
-          <div className="text-[11.5px] text-(--color-brand-sub)">{ctx.user.email}（管理者）</div>
+          <div className="text-[15px] font-bold">本部管理</div>
+          <div className="text-[11px] text-white/80">{ctx.user.email}（管理者）</div>
         </div>
         <form action={signOut}>
-          <button className="rounded-lg border border-(--color-brand-line) px-3 py-1.5 text-[12.5px] font-bold text-(--color-brand-sub)">ログアウト</button>
+          <button className="rounded-lg bg-white/15 px-3 py-1.5 text-[12px] font-bold text-white">ログアウト</button>
         </form>
       </header>
 
+      <div className="mx-auto max-w-[720px] p-4">
       {adminError && (
         <div className="mb-3 rounded-xl border border-(--color-brand-red) bg-(--color-brand-red-soft) p-3 text-[12.5px] text-(--color-brand-red)">
           <div className="font-bold">サービスロール接続エラー</div>
@@ -147,6 +148,7 @@ export default async function AdminPage() {
         ※ 信用実績（取引完了・期日内支払い等）の数値は取引イベントからのみ更新され、ここでは直接編集できません。
         修正が必要な場合は修正イベントを記録して再計算する方針です（今後実装）。
       </p>
+      </div>
     </div>
   );
 }

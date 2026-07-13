@@ -1,14 +1,22 @@
-import { Header } from "@/components/Header";
+import { AppShell } from "@/components/app/AppShell";
+import { SelfProfileView } from "@/components/app/SelfProfile";
+import { Card } from "@/components/company/parts";
+import { loadCompanyPageData } from "@/server/companyData";
 
-export default function MePage() {
+export const dynamic = "force-dynamic";
+export const metadata = { title: "自社プロフィール" };
+
+export default async function MeTab() {
+  const { self, email } = await loadCompanyPageData();
   return (
-    <>
-      <Header title="自社" />
-      <div className="space-y-3 p-4">
-        <div className="rounded-2xl border border-(--color-brand-line) bg-white p-4 text-sm text-(--color-brand-sub)">
-          自社プロフィール・登録会社一覧・LINE連携・認証管理・運営管理への導線をここに表示します。
-        </div>
-      </div>
-    </>
+    <AppShell title="自社プロフィール">
+      {self ? (
+        <SelfProfileView self={self} />
+      ) : (
+        <Card>
+          <div className="text-[13px] text-(--color-brand-red)">会社に所属していません（{email}）。</div>
+        </Card>
+      )}
+    </AppShell>
   );
 }
