@@ -3,7 +3,7 @@ import { AppShell } from "@/components/app/AppShell";
 import { JobForm, type JobFormState } from "../../JobForm";
 import { updateProjectAction } from "../../actions";
 import { loadProjectDetail } from "@/server/projectData";
-import { getAuthContext } from "@/server/auth";
+import { currentCompanyId } from "@/server/acting";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "案件を編集" };
@@ -14,8 +14,8 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
   if (!detail) notFound();
   const { project } = detail;
 
-  const ctx = await getAuthContext();
-  const isPrime = ctx.companyId != null && ctx.companyId === (project.primeId as unknown as string);
+  const myCompanyId = await currentCompanyId();
+  const isPrime = myCompanyId != null && myCompanyId === (project.primeId as unknown as string);
   // 元請本人・募集中のみ編集可。それ以外は詳細へ戻す。
   if (!isPrime || project.stage !== "recruiting") redirect(`/projects/${id}`);
 

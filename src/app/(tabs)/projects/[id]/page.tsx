@@ -14,7 +14,7 @@ import {
   type MetricsView,
 } from "@/components/company/parts";
 import { loadProjectDetail } from "@/server/projectData";
-import { getAuthContext } from "@/server/auth";
+import { currentCompanyId } from "@/server/acting";
 import { companyCreditLevel, companyFactsOf, type Company } from "@/domain/company";
 import { continuousCount } from "@/domain/credit";
 import { ApplyButton, SelectButton } from "./buttons";
@@ -48,8 +48,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   if (!detail) notFound();
   const { project, prime, applicants } = detail;
 
-  const ctx = await getAuthContext();
-  const myCompanyId = ctx.companyId;
+  const myCompanyId = await currentCompanyId();
   const isPrime = myCompanyId != null && myCompanyId === (project.primeId as unknown as string);
   const alreadyApplied = myCompanyId != null && project.applicantIds.some((a) => (a as unknown as string) === myCompanyId);
   const recruiting = project.stage === "recruiting";

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { getAuthContext } from "@/server/auth";
+import { DevSwitcher } from "@/components/dev/DevSwitcher";
 
 /**
  * 会社向けアプリのタブ群（ホーム/案件/取引/パートナー/自社）のガード。
@@ -15,5 +16,10 @@ export default async function TabsLayout({ children }: { children: ReactNode }) 
   }
   if (!ctx.user) redirect("/login?next=/home");
   if (ctx.isAdmin) redirect("/admin");
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <DevSwitcher />
+    </>
+  );
 }

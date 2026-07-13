@@ -1,8 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
-import { getAuthContext } from "@/server/auth";
+import { currentCompanyId, getDb } from "@/server/acting";
 import { chatAvailable } from "@/server/chatData";
 import { rowToProject, type ProjectRow } from "@/infra/supabase/mappers";
 
@@ -17,11 +16,10 @@ export async function sendMessageAction(projectId: string, partnerCompanyId: str
   const body = text.trim();
   if (!body) return { ok: false, error: "メッセージを入力してください" };
 
-  const ctx = await getAuthContext();
-  const me = ctx.companyId;
+  const me = await currentCompanyId();
   if (!me) return { ok: false, error: "ログインが必要です" };
 
-  const supabase = await createClient();
+  const supabase = await getDb();
   const { data: pRow } = await supabase.from("projects").select("state").eq("id", projectId).maybeSingle();
   if (!pRow) return { ok: false, error: "案件が見つかりません" };
   const project = rowToProject(pRow as unknown as ProjectRow);
