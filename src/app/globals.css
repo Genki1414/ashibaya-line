@@ -37,3 +37,15 @@ body {
   font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Noto Sans JP",
     "Yu Gothic", system-ui, sans-serif;
 }
+
+/* 端末幅にフィットさせ、どのページでも横スクロール（はみ出し）を出さない。 */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+img,
+video {
+  max-width: 100%;
+  height: auto;
+}
