@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CompanyId, ProjectId, unwrap } from "../shared";
-import { applyToProject, contractAmount, postProject } from "./Project";
+import { applyToProject, contractAmount, editProject, postProject } from "./Project";
 
 const PRIME = CompanyId("A");
 const PARTNER_B = CompanyId("B");
@@ -86,5 +86,47 @@ describe("Project", () => {
   it("computes contract-job amounts as the flat price", () => {
     const project = post({ jobType: "contract", unitPrice: 240000, need: null });
     expect(contractAmount(project)).toBe(240000);
+  });
+
+  const editInput = {
+    name: "改題した案件",
+    jobType: "contract" as const,
+    region: "宮城県 名取市",
+    address: "名取市増田",
+    overallSchedule: { plannedStart: "2026-09-01", plannedEnd: "2026-09-05" },
+    assemblySchedule: { plannedStart: "2026-09-01", plannedEnd: "2026-09-01" },
+    dismantleSchedule: { plannedStart: "2026-09-05", plannedEnd: "2026-09-05" },
+    need: null,
+    unitPrice: 300000,
+    payType: "lump" as const,
+    closing: "末" as const,
+    payTerm: "翌月15" as const,
+    workDescription: "内容を更新",
+    belongings: "ヘルメット",
+    applicationDeadline: "2026-08-25",
+    guaranteed: false,
+  };
+
+  it("edits a recruiting project while preserving id, prime, and applicants", () => {
+    let project = post();
+    project = unwrap(applyToProject(project, PARTNER_B));
+    const edited = unwrap(editProject(project, editInput));
+    expect(edited.id).toBe(project.id);
+    expect(edited.primeId).toBe(PRIME);
+    expect(edited.applicantIds).toEqual([PARTNER_B]);
+    expect(edited.name).toBe("改題した案件");
+    expect(edited.unitPrice).toBe(300000);
+    expect(edited.guaranteed).toBe(false);
+    expect(edited.stage).toBe("recruiting");
+  });
+
+  it("rejects editing a project that is no longer recruiting", () => {
+    const matched = { ...post(), stage: "matched" as const };
+    expect(editProject(matched, editInput).ok).toBe(false);
+  });
+
+  it("rejects an invalid headcount on edit", () => {
+    const project = post();
+    expect(editProject(project, { ...editInput, need: 0 }).ok).toBe(false);
   });
 });

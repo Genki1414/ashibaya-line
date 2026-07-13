@@ -55,6 +55,39 @@ export function postProject(input: PostProjectInput): Result<Project> {
   );
 }
 
+export type EditProjectInput = Omit<PostProjectInput, "id" | "postedAt" | "primeId">;
+
+/** 募集中の案件の内容を差し替える。id/stage/応募者/元請/投稿日は保持する。 */
+export function editProject(project: Project, input: EditProjectInput): Result<Project> {
+  if (project.stage !== "recruiting") {
+    return err(new DomainError("PROJECT_NOT_RECRUITING", "選定済みの案件は編集できません"));
+  }
+  if (input.need !== null && (!Number.isInteger(input.need) || input.need <= 0)) {
+    return err(new DomainError("INVALID_NEED", "募集人数は1以上の整数で指定してください"));
+  }
+  return andThen(money(input.unitPrice), (unitPrice) =>
+    ok({
+      ...project,
+      name: input.name,
+      jobType: input.jobType,
+      region: input.region,
+      address: input.address,
+      overallSchedule: input.overallSchedule,
+      assemblySchedule: input.assemblySchedule,
+      dismantleSchedule: input.dismantleSchedule,
+      need: input.need,
+      unitPrice,
+      payType: input.payType,
+      closing: input.closing,
+      payTerm: input.payTerm,
+      workDescription: input.workDescription,
+      belongings: input.belongings,
+      applicationDeadline: input.applicationDeadline,
+      guaranteed: input.guaranteed,
+    }),
+  );
+}
+
 export function applyToProject(project: Project, partnerId: CompanyId): Result<Project> {
   if (project.stage !== "recruiting") {
     return err(new DomainError("PROJECT_NOT_RECRUITING", "この案件はすでに選定済みです"));

@@ -20,13 +20,10 @@ function s(fd: FormData, k: string): string {
   return String(fd.get(k) ?? "").trim();
 }
 
-/** 案件投稿（発注）。本部承認済み（active）会社のみ。 */
-export async function postProjectAction(_prev: ProjectActionResult | null, fd: FormData): Promise<ProjectActionResult> {
-  const container = await getContainer();
-  const company = await container.loadCompany(container.actingCompanyId as unknown as string);
-  if (!company) return { ok: false, error: "会社情報が取得できませんでした" };
-  if (!canTransact(company)) return { ok: false, error: "案件の投稿は本部の承認後に可能になります" };
-
+/** 案件フォーム（投稿/編集共通）の FormData → コマンド変換。バリデーションエラー時は error を返す。 */
+function parseProjectForm(fd: FormData):
+  | { ok: true; command: Parameters<Awaited<ReturnType<typeof getContainer>>["projectService"]["post"]>[1] }
+  | { ok: false; error: string } {
   const name = s(fd, "name");
   const start = s(fd, "start");
   const end = s(fd, "end");
@@ -39,28 +36,62 @@ export async function postProjectAction(_prev: ProjectActionResult | null, fd: F
   const dismantleStart = s(fd, "dismantleStart") || end;
   const needRaw = s(fd, "need");
 
-  const result = await container.projectService.post(container.actingCompanyId, {
-    name,
-    jobType: (s(fd, "jobType") || "support") as JobType,
-    region: s(fd, "region"),
-    address: s(fd, "address") || "（後日連絡）",
-    overallSchedule: { plannedStart: start, plannedEnd: end },
-    assemblySchedule: { plannedStart: assemblyStart, plannedEnd: s(fd, "assemblyEnd") || assemblyStart },
-    dismantleSchedule: { plannedStart: dismantleStart, plannedEnd: s(fd, "dismantleEnd") || dismantleStart },
-    need: needRaw ? Number(needRaw.replace(/[^\d]/g, "")) : null,
-    unitPrice: Number(priceRaw.replace(/[^\d]/g, "")),
-    payType: (s(fd, "payType") || "progress") as PayType,
-    closing: (s(fd, "closing") || "末") as ClosingDay,
-    payTerm: (s(fd, "payTerm") || "翌月末") as PayTerm,
-    workDescription: s(fd, "work") || "詳細はチャットにて。",
-    belongings: s(fd, "belongings"),
-    applicationDeadline: s(fd, "deadline") || start,
-    guaranteed: s(fd, "guaranteed") === "on",
-  });
+  return {
+    ok: true,
+    command: {
+      name,
+      jobType: (s(fd, "jobType") || "support") as JobType,
+      region: s(fd, "region"),
+      address: s(fd, "address") || "（後日連絡）",
+      overallSchedule: { plannedStart: start, plannedEnd: end },
+      assemblySchedule: { plannedStart: assemblyStart, plannedEnd: s(fd, "assemblyEnd") || assemblyStart },
+      dismantleSchedule: { plannedStart: dismantleStart, plannedEnd: s(fd, "dismantleEnd") || dismantleStart },
+      need: needRaw ? Number(needRaw.replace(/[^\d]/g, "")) : null,
+      unitPrice: Number(priceRaw.replace(/[^\d]/g, "")),
+      payType: (s(fd, "payType") || "progress") as PayType,
+      closing: (s(fd, "closing") || "末") as ClosingDay,
+      payTerm: (s(fd, "payTerm") || "翌月末") as PayTerm,
+      workDescription: s(fd, "work") || "詳細はチャットにて。",
+      belongings: s(fd, "belongings"),
+      applicationDeadline: s(fd, "deadline") || start,
+      guaranteed: s(fd, "guaranteed") === "on",
+    },
+  };
+}
 
+/** 案件投稿（発注）。本部承認済み（active）会社のみ。 */
+export async function postProjectAction(_prev: ProjectActionResult | null, fd: FormData): Promise<ProjectActionResult> {
+  const container = await getContainer();
+  const company = await container.loadCompany(container.actingCompanyId as unknown as string);
+  if (!company) return { ok: false, error: "会社情報が取得できませんでした" };
+  if (!canTransact(company)) return { ok: false, error: "案件の投稿は本部の承認後に可能になります" };
+
+  const parsed = parseProjectForm(fd);
+  if (!parsed.ok) return { ok: false, error: parsed.error };
+
+  const result = await container.projectService.post(container.actingCompanyId, parsed.command);
   if (!result.ok) return { ok: false, error: result.error.message };
   revalidatePath("/projects");
   redirect("/projects");
+}
+
+/** 案件編集（元請のみ・募集中のみ）。 */
+export async function updateProjectAction(_prev: ProjectActionResult | null, fd: FormData): Promise<ProjectActionResult> {
+  const container = await getContainer();
+  const projectId = s(fd, "id");
+  if (!projectId) return { ok: false, error: "案件IDが不正です" };
+  const company = await container.loadCompany(container.actingCompanyId as unknown as string);
+  if (!company) return { ok: false, error: "会社情報が取得できませんでした" };
+  if (!canTransact(company)) return { ok: false, error: "案件の編集は本部の承認後に可能になります" };
+
+  const parsed = parseProjectForm(fd);
+  if (!parsed.ok) return { ok: false, error: parsed.error };
+
+  const result = await container.projectService.edit(container.actingCompanyId, ProjectId(projectId), parsed.command);
+  if (!result.ok) return { ok: false, error: result.error.message };
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath("/projects");
+  redirect(`/projects/${projectId}`);
 }
 
 /** 応募（受注）。応募者は元請ではないため、案件への応募者追加は service_role で行う（RLSは厳格なまま）。 */

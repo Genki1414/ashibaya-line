@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app/AppShell";
 import {
@@ -62,6 +63,15 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   return (
     <AppShell title={project.name} back="/projects">
       <div className="space-y-4">
+        {/* 元請本人・募集中のみ編集可 */}
+        {isPrime && recruiting && (
+          <Link
+            href={`/projects/${project.id as unknown as string}/edit`}
+            className="flex items-center justify-center gap-1.5 rounded-xl border border-(--color-brand-blue) bg-(--color-brand-blue-soft) py-2.5 text-[13.5px] font-bold text-(--color-brand-blue)"
+          >
+            ✎ 案件内容を編集する
+          </Link>
+        )}
         {/* 元請の信用 */}
         {prime && (
           <Card>
