@@ -1,0 +1,34 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+const TABS = [
+  { href: "/home", label: "ホーム", icon: "⌂" },
+  { href: "/projects", label: "案件", icon: "▤" },
+  { href: "/transactions", label: "取引", icon: "⇄" },
+  { href: "/partners", label: "パートナー", icon: "◈" },
+  { href: "/me", label: "自社", icon: "◎" },
+] as const;
+
+export function AppBottomNav() {
+  const pathname = usePathname();
+  return (
+    <nav className="sticky bottom-0 z-10 flex border-t border-(--color-brand-line) bg-white px-1 pb-2 pt-2">
+      {TABS.map((t) => {
+        const active = pathname === t.href || pathname.startsWith(`${t.href}/`);
+        return (
+          <Link
+            key={t.href}
+            href={t.href}
+            className="flex flex-1 flex-col items-center gap-0.5"
+            style={{ color: active ? "var(--color-brand-blue)" : "var(--color-brand-faint)" }}
+          >
+            <span className="text-[18px] leading-none">{t.icon}</span>
+            <span className="text-[10px]" style={{ fontWeight: active ? 800 : 600 }}>{t.label}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}

@@ -37,7 +37,7 @@ export async function signIn(_prev: AuthActionResult | null, formData: FormData)
 
   // 遷移先は今サインインしたユーザーから直接判定（同一リクエスト内の再取得に依存しない）。
   if (next && next.startsWith("/")) redirect(next);
-  redirect(isAdmin ? "/admin" : "/");
+  redirect(isAdmin ? "/admin" : "/home");
 }
 
 /**
@@ -99,7 +99,7 @@ export async function signUp(_prev: AuthActionResult | null, formData: FormData)
   } catch {
     return { ok: false, error: "登録は完了しました。ログイン画面からログインしてください" };
   }
-  redirect("/");
+  redirect("/home");
 }
 
 export async function signOut(): Promise<void> {

@@ -1,14 +1,17 @@
-import { Header } from "@/components/Header";
+import { AppShell } from "@/components/app/AppShell";
+import { ComingSoon } from "@/components/app/ComingSoon";
 
-export default function ProjectsPage() {
+export const dynamic = "force-dynamic";
+export const metadata = { title: "案件" };
+
+export default function ProjectsTab() {
   return (
-    <>
-      <Header title="案件" />
-      <div className="space-y-3 p-4">
-        <div className="rounded-2xl border border-(--color-brand-line) bg-white p-4 text-sm text-(--color-brand-sub)">
-          案件一覧（募集中・成立済み）をここに表示します。
-        </div>
-      </div>
-    </>
+    <AppShell title="案件">
+      <ComingSoon
+        icon="▤"
+        title="案件（募集・応募・選定）"
+        note="案件の投稿・応募・協力会社の選定をここで行います。発注・受注は本部承認後に解禁されます。"
+      />
+    </AppShell>
   );
 }
