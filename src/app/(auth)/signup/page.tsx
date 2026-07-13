@@ -2,6 +2,7 @@ import Link from "next/link";
 import { SignupForm } from "./SignupForm";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "会社の新規登録" };
 
 export default function SignupPage() {
   return (

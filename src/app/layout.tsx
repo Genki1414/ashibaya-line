@@ -13,8 +13,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "足場屋LINE",
-  description: "足場会社向け信用プラットフォーム",
+  title: {
+    default: "足場信用プラットフォーム",
+    template: "%s ｜ 足場信用プラットフォーム",
+  },
+  description: "足場会社向け 信用プラットフォーム",
 };
 
 export default function RootLayout({
