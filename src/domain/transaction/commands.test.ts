@@ -184,6 +184,17 @@ describe("Transaction single-phase engine (support / 応援)", () => {
   });
 });
 
+describe("のべ作業日数の自動計算", () => {
+  it("日次の作業終了報告＋完了日から重複日を除いて自動計算する（手入力は無視）", () => {
+    let tx = unwrap(cmd.startTransaction(progressTx(), "partner", "2026-07-08", true)).transaction;
+    tx = unwrap(cmd.startWork(tx, "assembly", "partner", { date: "2026-07-08", people: 2 }, "2026-07-08")).transaction; // start=07-08
+    tx = unwrap(cmd.recordDailySession(tx, "assembly", "partner", { date: "2026-07-09", kind: "end", people: 2, note: null }, "2026-07-09")).transaction; // 07-09
+    tx = unwrap(cmd.reportWorkCompletion(tx, "assembly", "partner", { date: "2026-07-10", days: 999, people: 2, content: "完了", photoCount: 1 }, "2026-07-10")).transaction; // 完了=07-10
+    // 07-08 / 07-09 / 07-10 の3日（入力 days:999 は無視）
+    expect(tx.phases.assembly.work.report?.days).toBe(3);
+  });
+});
+
 describe("案件情報の変更（元請）", () => {
   it("元請は現場・未請求フェーズの金額を変更できる（協力会社は不可）", () => {
     let tx = unwrap(cmd.startTransaction(progressTx(), "partner", "2026-07-08", true)).transaction;

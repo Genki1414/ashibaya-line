@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Transaction, AvailableAction, Actor, PhaseKey } from "@/domain/transaction";
-import { activePhaseKeys, phaseLabel } from "@/domain/transaction";
+import { activePhaseKeys, isPhaseMultiDay, phaseLabel } from "@/domain/transaction";
 import { runTransactionAction, type TransactionActionInput } from "@/app/(tabs)/transactions/actions";
 import { CreditTimeline } from "./CreditTimeline";
 import type { TimelineEntry } from "@/lib/txTimeline";
@@ -40,10 +40,14 @@ const FIELDS: Record<string, Field[]> = {
   ],
   reportWorkCompletion: [
     { name: "date", label: "完了日", type: "date", required: true },
-    { name: "days", label: "のべ作業日数", type: "number", required: true },
     { name: "people", label: "人数（応援は必須）", type: "number", optional: true },
     { name: "content", label: "作業内容", type: "text", required: true },
     { name: "photoCount", label: "写真枚数", type: "number", optional: true },
+  ],
+  recordDailyEnd: [
+    { name: "date", label: "作業終了日", type: "date", required: true },
+    { name: "people", label: "人数", type: "number", optional: true },
+    { name: "note", label: "メモ", type: "text", optional: true },
   ],
   submitInvoice: [
     { name: "amount", label: "請求額", type: "money", required: true },
@@ -222,7 +226,15 @@ export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, ne
 
       {/* 作業フェーズ（請負＝組立/解体、応援＝作業のみ） */}
       {activePhaseKeys(tx).map((phase) => (
-        <PhasePanel key={phase} tx={tx} phase={phase} highlight={hasPending(phase)} />
+        <PhasePanel
+          key={phase}
+          tx={tx}
+          phase={phase}
+          highlight={hasPending(phase)}
+          role={role}
+          pending={pending}
+          onDailyReport={() => setModal({ action: { key: "recordDailySession", label: "本日の作業終了を報告", phase, urgent: false, section: phase }, fields: FIELDS.recordDailyEnd })}
+        />
       ))}
 
       {/* 確認事項 / 相談 */}
@@ -334,7 +346,10 @@ export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, ne
           defaults={defaultsFor(tx, modal.action)}
           onClose={() => setModal(null)}
           onSubmit={(payload) => {
-            dispatch({ txId: tx.id, key: modal.overrideKey ?? modal.action.key, phase: modal.action.phase, payload });
+            const key = modal.overrideKey ?? modal.action.key;
+            // 日次の作業報告は「作業終了（end）」として記録する。
+            const finalPayload = key === "recordDailySession" ? { ...payload, kind: "end" } : payload;
+            dispatch({ txId: tx.id, key, phase: modal.action.phase, payload: finalPayload });
             setModal(null);
           }}
         />
@@ -492,17 +507,42 @@ function Section({ title, highlight, defaultOpen, children }: { title: string; h
   );
 }
 
-function PhasePanel({ tx, phase, highlight }: { tx: Transaction; phase: PhaseKey; highlight?: boolean }) {
+function PhasePanel({
+  tx,
+  phase,
+  highlight,
+  role,
+  pending,
+  onDailyReport,
+}: {
+  tx: Transaction;
+  phase: PhaseKey;
+  highlight?: boolean;
+  role: Actor;
+  pending: boolean;
+  onDailyReport: () => void;
+}) {
   const p = tx.phases[phase];
   const label = phaseLabel(tx, phase); // 応援（単相）は空文字
+  const endSessions = p.work.sessions.filter((s) => s.kind === "end").length;
+  const multiDay = isPhaseMultiDay(p.schedule);
   return (
     <Section title={label ? `${label}フェーズ` : "作業フェーズ"} highlight={highlight}>
       <Row label="予定" value={`${dmd(p.schedule.plannedStart)}〜${dmd(p.schedule.plannedEnd)}`} />
       <Row label="実績" value={`${dmd(p.work.startDate)}〜${dmd(p.work.endDate)}`} />
       <Row label="作業" value={WORK_JP[p.work.status]} />
+      {p.work.report && <Row label="のべ作業日数" value={`${p.work.report.days}日（日次報告＋完了日から自動計算）`} />}
       <Row label="請求" value={BILL_JP[p.bill.status]} />
       {p.amount != null && <Row label="金額" value={yen(p.amount)} />}
       {p.work.rework && <div className="mt-1 rounded-lg bg-(--color-brand-amber-soft) p-2 text-[12px]">是正依頼: {p.work.rework.text}</div>}
+      {/* 複数日工期は、日々の作業終了を報告するとのべ作業日数に自動反映される */}
+      {p.work.status === "working" && role === "partner" && multiDay && (
+        <div className="mt-2">
+          <SmallButton disabled={pending} onClick={onDailyReport}>
+            本日の作業終了を報告{endSessions > 0 ? `（${endSessions}日分 記録済み）` : ""}
+          </SmallButton>
+        </div>
+      )}
     </Section>
   );
 }
