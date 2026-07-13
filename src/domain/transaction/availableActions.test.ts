@@ -16,7 +16,7 @@ function baseTx() {
   return createTransaction({
     id: TransactionId("t1"),
     projectName: "案件",
-    jobType: "support",
+    jobType: "contract",
     region: "宮城県 仙台市",
     address: "仙台市",
     need: 2,

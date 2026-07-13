@@ -25,6 +25,8 @@ export {
   hasOpenIssue,
   dismantleLocked,
   canBillPhase,
+  activePhaseKeys,
+  phaseLabel,
   isPhaseMultiDay,
   billedPhaseKeys,
   isAllOnTime,

@@ -31,7 +31,7 @@ function richTransaction() {
   let tx = createTransaction({
     id: TransactionId("t1"),
     projectName: "マンション改修 足場",
-    jobType: "support",
+    jobType: "contract",
     region: "宮城県 仙台市",
     address: "仙台市青葉区",
     need: 2,

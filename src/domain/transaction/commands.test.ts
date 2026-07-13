@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { CompanyId, TransactionId, money, unwrap } from "../shared";
 import * as cmd from "./commands";
 import { createTransaction } from "./factory";
-import { billAction, category, isTransactionComplete } from "./queries";
+import { availableActions, billAction, category, isTransactionComplete } from "./queries";
 
 const PRIME = CompanyId("A");
 const PARTNER = CompanyId("B");
@@ -17,7 +17,7 @@ function progressTx() {
   return createTransaction({
     id: TransactionId("t1"),
     projectName: "マンション改修 足場",
-    jobType: "support",
+    jobType: "contract",
     region: "宮城県 仙台市",
     address: "仙台市青葉区",
     need: 2,
@@ -129,6 +129,58 @@ describe("Transaction two-phase engine (progress)", () => {
     expect(completion.transaction.completion?.onTime).toBe(true);
     expect(completion.events.some((event) => event.name === "TransactionCompleted")).toBe(true);
     expect(category(completion.transaction)).toBe("completed");
+  });
+});
+
+function supportTx() {
+  return createTransaction({
+    id: TransactionId("t3"),
+    projectName: "工場外壁 応援",
+    jobType: "support",
+    region: "宮城県 仙台市",
+    address: "仙台市青葉区",
+    need: 2,
+    payType: "progress",
+    closing: "末",
+    payTerm: "翌月末",
+    primeId: PRIME,
+    partnerId: PARTNER,
+    guaranteed: true,
+    chatKey: "p3:B",
+    overallSchedule: { plannedStart: "2026-07-08", plannedEnd: "2026-07-10" },
+    assemblySchedule: { plannedStart: "2026-07-08", plannedEnd: "2026-07-09" },
+    dismantleSchedule: { plannedStart: "2026-07-08", plannedEnd: "2026-07-09" },
+    assemblyAmount: mustMoney(44000),
+    dismantleAmount: null,
+  });
+}
+
+describe("Transaction single-phase engine (support / 応援)", () => {
+  it("has no dismantle phase and completes on the single work phase's deposit", () => {
+    let tx = supportTx();
+    tx = unwrap(cmd.startTransaction(tx, "partner", "2026-07-08", true)).transaction;
+    tx = unwrap(cmd.issueOrder(tx, "prime", "2026-07-08")).transaction;
+    tx = unwrap(cmd.acknowledgeOrder(tx, "partner", "2026-07-08")).transaction;
+
+    // 単相なので「作業を開始」だけ。解体フェーズの操作は受け付けない。
+    const labels = availableActions(tx, "partner").map((a) => a.label);
+    expect(labels).toContain("作業を開始");
+    expect(labels.some((l) => l.includes("解体") || l.includes("組立"))).toBe(false);
+    expect(cmd.startWork(tx, "dismantle", "partner", { date: "2026-07-08", people: 2 }, "2026-07-08").ok).toBe(false);
+
+    tx = unwrap(cmd.startWork(tx, "assembly", "partner", { date: "2026-07-08", people: 2 }, "2026-07-08")).transaction;
+    tx = unwrap(cmd.reportWorkCompletion(tx, "assembly", "partner", { date: "2026-07-09", days: 2, people: 2, content: "作業完了", photoCount: 1 }, "2026-07-09")).transaction;
+    tx = unwrap(cmd.confirmWork(tx, "assembly", "prime", "2026-07-09")).transaction;
+
+    const invoice = availableActions(tx, "partner").find((a) => a.key === "submitInvoice");
+    expect(invoice?.label).toBe("請求書を提出");
+
+    tx = unwrap(cmd.submitInvoice(tx, "assembly", "partner", { amount: 44000, issuedAt: "2026-07-09", dueDate: "2026-07-31", bankAccount: "行" }, "2026-07-09")).transaction;
+    tx = unwrap(cmd.checkInvoice(tx, "assembly", "prime", "2026-07-09")).transaction;
+    tx = unwrap(cmd.registerPayment(tx, "assembly", "prime", { amount: 44000, paidAt: "2026-07-20", method: "銀行振込" }, "2026-07-20")).transaction;
+    const done = unwrap(cmd.confirmDeposit(tx, "assembly", "partner", { amount: 44000, confirmedAt: "2026-07-21" }, "2026-07-21"));
+    expect(done.transaction.status).toBe("completed");
+    expect(done.events.some((e) => e.name === "TransactionCompleted")).toBe(true);
   });
 });
 
