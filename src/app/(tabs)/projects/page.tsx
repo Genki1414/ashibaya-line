@@ -4,6 +4,7 @@ import { LevelBadge } from "@/components/company/parts";
 import { Notifications } from "@/components/app/Notifications";
 import { loadCompanyPageData } from "@/server/companyData";
 import { listProjects, type ProjectCardView } from "@/server/projectData";
+import { loadUnreadChats } from "@/server/chatData";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "案件" };
@@ -15,7 +16,7 @@ function Pill({ label, color, bg }: { label: string; color: string; bg: string }
   return <span className="rounded-full px-2 py-0.5 text-[11px] font-bold" style={{ color, background: bg }}>{label}</span>;
 }
 
-function ProjectCard({ p }: { p: ProjectCardView }) {
+function ProjectCard({ p, unread }: { p: ProjectCardView; unread: number }) {
   return (
     <Link href={`/projects/${p.id}`} className="mb-3 block rounded-2xl border border-(--color-brand-line) bg-white p-3.5">
       <div className="mb-2 flex flex-wrap items-center gap-1.5">
@@ -24,6 +25,7 @@ function ProjectCard({ p }: { p: ProjectCardView }) {
         <Pill label={p.payType === "progress" ? "出来高" : "一括"} color={p.payType === "progress" ? "#C79A2E" : "#5B6473"} bg={p.payType === "progress" ? "#FBF2D9" : "#EEF1F5"} />
         {p.isOwn && <Pill label="自社の案件" color="#159B67" bg="#E4F6EE" />}
         {p.applied && p.stage === "recruiting" && <Pill label="応募中" color="#C77700" bg="#FCF2DF" />}
+        {unread > 0 && <Pill label={`💬 新着${unread}`} color="#6D4AC4" bg="#EEE9FA" />}
         <span className="ml-auto"><LevelBadge level={p.primeLevel} /></span>
       </div>
       <div className="text-[15.5px] font-bold text-(--color-brand-ink)">{p.name}</div>
@@ -46,7 +48,9 @@ function ProjectCard({ p }: { p: ProjectCardView }) {
 
 export default async function ProjectsTab() {
   const { self, companyId } = await loadCompanyPageData();
-  const projects = await listProjects(companyId);
+  const [projects, unreadChats] = await Promise.all([listProjects(companyId), loadUnreadChats()]);
+  const unreadByProject = new Map<string, number>();
+  for (const c of unreadChats) unreadByProject.set(c.projectId, (unreadByProject.get(c.projectId) ?? 0) + c.count);
   const canPost = self?.status === "active";
 
   return (
@@ -64,7 +68,7 @@ export default async function ProjectsTab() {
       {projects.length === 0 ? (
         <div className="rounded-2xl border border-(--color-brand-line) bg-white p-6 text-center text-[13px] text-(--color-brand-sub)">案件はまだありません。</div>
       ) : (
-        projects.map((p) => <ProjectCard key={p.id} p={p} />)
+        projects.map((p) => <ProjectCard key={p.id} p={p} unread={unreadByProject.get(p.id) ?? 0} />)
       )}
     </AppShell>
   );

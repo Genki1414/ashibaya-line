@@ -1,7 +1,8 @@
 import { getContainer } from "./container";
 import { listProjects } from "./projectData";
+import { loadUnreadChats } from "./chatData";
 
-export type NotificationKind = "応募" | "選定" | "受注";
+export type NotificationKind = "応募" | "選定" | "受注" | "チャット";
 
 export interface AppNotification {
   kind: NotificationKind;
@@ -22,8 +23,17 @@ export async function loadNotifications(): Promise<AppNotification[]> {
   const me = container.actingCompanyId as unknown as string;
   if (!me || me === "__none__") return [];
 
-  const [projects, txs] = await Promise.all([listProjects(me), container.listTransactionsForActing()]);
+  const [projects, txs, unreadChats] = await Promise.all([listProjects(me), container.listTransactionsForActing(), loadUnreadChats()]);
   const items: AppNotification[] = [];
+
+  for (const c of unreadChats) {
+    items.push({
+      kind: "チャット",
+      title: `「${c.projectName}」${c.counterpartyName}`,
+      body: `新着メッセージ ${c.count}件：${c.lastText}`,
+      href: `/projects/${c.projectId}/chat/${c.partnerCompanyId}`,
+    });
+  }
 
   for (const p of projects) {
     if (p.isOwn && p.stage === "recruiting" && p.applicants > 0) {

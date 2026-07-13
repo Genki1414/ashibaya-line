@@ -43,3 +43,16 @@ export async function sendMessageAction(projectId: string, partnerCompanyId: str
   revalidatePath(`/projects/${projectId}/chat/${partnerCompanyId}`);
   return { ok: true };
 }
+
+/** チャットを開いた/送信した時点までを既読にする。未読バッジのクリアに使う。 */
+export async function markChatReadAction(projectId: string, partnerCompanyId: string): Promise<void> {
+  if (!chatAvailable()) return;
+  const me = await currentCompanyId();
+  if (!me) return;
+  const supabase = await getDb();
+  const chatKey = `${projectId}:${partnerCompanyId}`;
+  // チャット行が無い（メッセージ未送信）場合は未読も無いので、FKエラーは無視する。
+  await supabase
+    .from("chat_reads")
+    .upsert({ chat_key: chatKey, company_id: me, last_read_at: new Date().toISOString() }, { onConflict: "chat_key,company_id" });
+}
