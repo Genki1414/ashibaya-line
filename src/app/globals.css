@@ -38,11 +38,12 @@ body {
     "Yu Gothic", system-ui, sans-serif;
 }
 
-/* 端末幅にフィットさせ、どのページでも横スクロール（はみ出し）を出さない。 */
+/* 端末幅にフィットさせ、どのページでも横スクロール（はみ出し）を出さない。
+   overflow-x: clip は hidden と違い position: sticky を壊さない。 */
 html,
 body {
   max-width: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 img,
 video {

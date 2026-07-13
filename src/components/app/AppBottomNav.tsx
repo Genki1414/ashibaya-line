@@ -14,7 +14,10 @@ const TABS = [
 export function AppBottomNav() {
   const pathname = usePathname();
   return (
-    <nav className="sticky bottom-0 z-10 flex border-t border-(--color-brand-line) bg-white px-1 pb-2 pt-2">
+    <nav
+      className="fixed bottom-0 left-1/2 z-20 flex w-full max-w-[460px] -translate-x-1/2 border-t border-(--color-brand-line) bg-white px-1 pt-2"
+      style={{ paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom))" }}
+    >
       {TABS.map((t) => {
         const active = pathname === t.href || pathname.startsWith(`${t.href}/`);
         return (

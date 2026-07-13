@@ -123,7 +123,7 @@ export function ChatBox({
                       {m.attachment.isImage ? (
                         <a href={m.attachment.url} target="_blank" rel="noopener noreferrer">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={m.attachment.url} alt={m.attachment.name} className="max-h-60 w-auto object-cover" />
+                          <img src={m.attachment.url} alt={m.attachment.name} className="max-h-60 max-w-full rounded-xl object-contain" />
                         </a>
                       ) : (
                         <a href={m.attachment.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-white px-3 py-2.5">
