@@ -27,12 +27,16 @@ export async function loadNotifications(): Promise<AppNotification[]> {
   const [projects, txs, unreadChats] = await Promise.all([listProjects(me), container.listTransactionsForActing(), loadUnreadChats()]);
   const items: AppNotification[] = [];
 
+  // 取引が生成済みのチャットは、変更通知と同様に取引詳細へ誘導する。
+  const txIdByChatKey = new Map(txs.map((t) => [t.chatKey as string, t.id as unknown as string]));
+
   for (const c of unreadChats) {
+    const txId = txIdByChatKey.get(c.chatKey);
     items.push({
       kind: "チャット",
       title: `「${c.projectName}」${c.counterpartyName}`,
       body: `新着メッセージ ${c.count}件：${c.lastText}`,
-      href: `/projects/${c.projectId}/chat/${c.partnerCompanyId}`,
+      href: txId ? `/transactions/${txId}` : `/projects/${c.projectId}/chat/${c.partnerCompanyId}`,
     });
   }
 
