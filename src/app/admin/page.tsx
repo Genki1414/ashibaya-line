@@ -6,7 +6,7 @@ import { rowToCompany, type CompanyRow } from "@/infra/supabase/mappers";
 import { companyCreditLevel } from "@/domain/company";
 import { signOut } from "@/app/(auth)/actions";
 import { AdminForms } from "./AdminForms";
-import { setCompanyStatus } from "./actions";
+import { StatusButton } from "./StatusButton";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "本部管理" };
@@ -119,25 +119,31 @@ export default async function AdminPage() {
             </div>
             <div className="mt-2 flex gap-2">
               {c.status !== "active" && (
-                <form action={setCompanyStatus}>
-                  <input type="hidden" name="companyId" value={c.id} />
-                  <input type="hidden" name="status" value="active" />
-                  <button className="rounded-lg bg-(--color-brand-green) px-3 py-1.5 text-[12px] font-bold text-white">承認する（発注・受注を解禁）</button>
-                </form>
+                <StatusButton
+                  companyId={c.id}
+                  status="active"
+                  label="承認する（発注・受注を解禁）"
+                  message={`${c.name} を承認し、発注・受注を解禁します。`}
+                  className="rounded-lg bg-(--color-brand-green) px-3 py-1.5 text-[12px] font-bold text-white"
+                />
               )}
               {c.status !== "suspended" && (
-                <form action={setCompanyStatus}>
-                  <input type="hidden" name="companyId" value={c.id} />
-                  <input type="hidden" name="status" value="suspended" />
-                  <button className="rounded-lg border border-(--color-brand-red) px-3 py-1.5 text-[12px] font-bold text-(--color-brand-red)">停止</button>
-                </form>
+                <StatusButton
+                  companyId={c.id}
+                  status="suspended"
+                  label="停止"
+                  message={`${c.name} の利用を停止します。発注・受注ができなくなります。`}
+                  className="rounded-lg border border-(--color-brand-red) px-3 py-1.5 text-[12px] font-bold text-(--color-brand-red)"
+                />
               )}
               {c.status === "suspended" && (
-                <form action={setCompanyStatus}>
-                  <input type="hidden" name="companyId" value={c.id} />
-                  <input type="hidden" name="status" value="pending" />
-                  <button className="rounded-lg border border-(--color-brand-line) px-3 py-1.5 text-[12px] font-bold text-(--color-brand-sub)">停止解除（承認待ちへ）</button>
-                </form>
+                <StatusButton
+                  companyId={c.id}
+                  status="pending"
+                  label="停止解除（承認待ちへ）"
+                  message={`${c.name} の停止を解除し、承認待ちに戻します。`}
+                  className="rounded-lg border border-(--color-brand-line) px-3 py-1.5 text-[12px] font-bold text-(--color-brand-sub)"
+                />
               )}
             </div>
           </div>
