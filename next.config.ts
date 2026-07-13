@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-// build marker: chat attachments + read receipts (re-trigger production deploy from main)
+// build marker: fixed bottom nav + phone-width transaction screen (re-trigger production deploy from main)
 const nextConfig: NextConfig = {
   /* config options here */
 };
