@@ -77,8 +77,8 @@ export class TransactionService {
     return appOk(transaction);
   }
 
-  accept(companyId: CompanyId, txId: TransactionId) {
-    return this.run(companyId, txId, (tx, role, at) => startTransaction(tx, role, at));
+  accept(companyId: CompanyId, txId: TransactionId, guaranteed: boolean) {
+    return this.run(companyId, txId, (tx, role, at) => startTransaction(tx, role, at, guaranteed));
   }
 
   issueOrder(companyId: CompanyId, txId: TransactionId) {

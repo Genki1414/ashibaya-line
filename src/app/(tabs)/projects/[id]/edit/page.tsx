@@ -38,7 +38,6 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
     work: project.workDescription,
     belongings: project.belongings,
     deadline: project.applicationDeadline,
-    guaranteed: project.guaranteed,
   };
 
   return (

@@ -42,7 +42,7 @@ export async function runTransactionAction(input: TransactionActionInput): Promi
   let result: AppResult<Transaction>;
   switch (input.key) {
     case "startTransaction":
-      result = await svc.accept(company, txId);
+      result = await svc.accept(company, txId, str(p, "guaranteed") === "on");
       break;
     case "issueOrder":
       result = await svc.issueOrder(company, txId);

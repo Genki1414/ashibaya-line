@@ -47,7 +47,7 @@ describe("availableActions", () => {
   });
 
   it("after start, prime has the order to issue and either party may log the assembly start", () => {
-    const tx = unwrap(cmd.startTransaction(baseTx(), "partner", "2026-07-08")).transaction;
+    const tx = unwrap(cmd.startTransaction(baseTx(), "partner", "2026-07-08", true)).transaction;
     // 注文書は元請のみ。作業開始は v8 同様 'either'（協力が実作業、どちらでも開始記録可）。
     expect(keys(tx, "prime")).toContain("issueOrder");
     expect(keys(tx, "prime")).toContain("startWork");
@@ -56,7 +56,7 @@ describe("availableActions", () => {
   });
 
   it("surfaces the prime's confirm-or-rework as urgent on the reported phase", () => {
-    let tx = unwrap(cmd.startTransaction(baseTx(), "partner", "2026-07-08")).transaction;
+    let tx = unwrap(cmd.startTransaction(baseTx(), "partner", "2026-07-08", true)).transaction;
     tx = unwrap(cmd.startWork(tx, "assembly", "partner", { date: "2026-07-08", people: 2 }, "2026-07-08")).transaction;
     tx = unwrap(
       cmd.reportWorkCompletion(tx, "assembly", "partner", { date: "2026-07-09", days: 2, people: 2, content: "組立完了", photoCount: 2 }, "2026-07-09"),
@@ -73,7 +73,7 @@ describe("availableActions", () => {
   });
 
   it("labels the progress invoice per phase and routes billing actors correctly", () => {
-    let tx = unwrap(cmd.startTransaction(baseTx(), "partner", "2026-07-08")).transaction;
+    let tx = unwrap(cmd.startTransaction(baseTx(), "partner", "2026-07-08", true)).transaction;
     tx = unwrap(cmd.startWork(tx, "assembly", "partner", { date: "2026-07-08", people: 2 }, "2026-07-08")).transaction;
     tx = unwrap(
       cmd.reportWorkCompletion(tx, "assembly", "partner", { date: "2026-07-09", days: 2, people: 2, content: "組立完了", photoCount: 2 }, "2026-07-09"),
@@ -89,7 +89,7 @@ describe("availableActions", () => {
   });
 
   it("only the partner is asked to acknowledge a schedule change; only the prime resolves an issue", () => {
-    let tx = unwrap(cmd.startTransaction(baseTx(), "partner", "2026-07-08")).transaction;
+    let tx = unwrap(cmd.startTransaction(baseTx(), "partner", "2026-07-08", true)).transaction;
     tx = unwrap(cmd.changeSchedule(tx, "prime", { dismantleSchedule: { plannedStart: "2026-08-06", plannedEnd: "2026-08-07" } }, "2026-07-08")).transaction;
     expect(keys(tx, "partner")).toContain("acknowledgeSchedule");
     expect(keys(tx, "prime")).not.toContain("acknowledgeSchedule");

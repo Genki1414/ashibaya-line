@@ -4,6 +4,8 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Transaction, AvailableAction, Actor, PhaseKey } from "@/domain/transaction";
 import { runTransactionAction, type TransactionActionInput } from "@/app/(tabs)/transactions/actions";
+import { CreditTimeline } from "./CreditTimeline";
+import type { TimelineEntry } from "@/lib/txTimeline";
 
 type Field = {
   name: string;
@@ -88,14 +90,16 @@ export interface TxWorkspaceProps {
   partner: CompanyBrief;
   statusLabel: string;
   nextHint: string;
+  timeline: TimelineEntry[];
 }
 
-export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, nextHint }: TxWorkspaceProps) {
+export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, nextHint, timeline }: TxWorkspaceProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [toast, setToast] = useState<{ ok: boolean; message: string } | null>(null);
   const [modal, setModal] = useState<{ action: AvailableAction; fields: Field[]; overrideKey?: string } | null>(null);
   const [confirmChoice, setConfirmChoice] = useState<AvailableAction | null>(null);
+  const [acceptChoice, setAcceptChoice] = useState<AvailableAction | null>(null);
 
   const showToast = (ok: boolean, message: string) => {
     setToast({ ok, message });
@@ -115,6 +119,11 @@ export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, ne
   };
 
   const onAction = (action: AvailableAction) => {
+    // 受注側の「取引を開始」は、売掛保証を適用するか選ぶモーダルを開く。
+    if (action.key === "startTransaction") {
+      setAcceptChoice(action);
+      return;
+    }
     // 元請の「完了確認 / 是正依頼」は確認 or 是正の二択モーダルを開く。
     if (action.key === "confirmWork") {
       setConfirmChoice(action);
@@ -220,12 +229,22 @@ export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, ne
         <Row label="協力会社" value={`${partner.name}（${LEVEL_JP[partner.level] ?? partner.level}）`} />
         <Row label="金額" value={`${yen((tx.phases.assembly.amount ?? 0) + (tx.phases.dismantle.amount ?? 0))}（${tx.payType === "progress" ? "出来高" : "一括"}）`} />
         <Row label="支払条件" value={`${tx.closing}締め / ${tx.payTerm}払い`} />
+        <Row label="売掛保証" value={tx.startedAt ? (tx.guaranteed ? "適用（受注側が選択）" : "なし") : "受注時に受注側が選択"} />
         <div className="mt-2">
           <SmallButton disabled={pending || tx.ashibase.linked} onClick={() => dispatch({ txId: tx.id, key: "linkAshiBase" })}>
             {tx.ashibase.linked ? "AshiBase連携済み" : "AshiBaseへ連携"}
           </SmallButton>
         </div>
       </Section>
+
+      {/* 信用タイムライン：この取引で起きたこと（完了時に信用実績へ反映） */}
+      <div>
+        <div className="mb-2 flex items-center gap-1.5 px-1">
+          <span className="h-3.5 w-1 rounded-full bg-(--color-brand-green)" />
+          <span className="text-[13.5px] font-bold text-(--color-brand-ink)">信用タイムライン</span>
+        </div>
+        <CreditTimeline entries={timeline} />
+      </div>
 
       {/* 入力モーダル */}
       {modal && (
@@ -238,6 +257,18 @@ export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, ne
           onSubmit={(payload) => {
             dispatch({ txId: tx.id, key: modal.overrideKey ?? modal.action.key, phase: modal.action.phase, payload });
             setModal(null);
+          }}
+        />
+      )}
+
+      {/* 取引開始（受注側の受諾）：売掛保証の適用可否を選ぶ */}
+      {acceptChoice && (
+        <AcceptModal
+          pending={pending}
+          onClose={() => setAcceptChoice(null)}
+          onConfirm={(guaranteed) => {
+            dispatch({ txId: tx.id, key: "startTransaction", phase: acceptChoice.phase, payload: { guaranteed: guaranteed ? "on" : "" } });
+            setAcceptChoice(null);
           }}
         />
       )}
@@ -387,6 +418,35 @@ function FormModal({
         <button onClick={() => onSubmit(values)} disabled={pending} className="flex-1 rounded-xl bg-(--color-brand-blue) py-2.5 text-[14px] font-bold text-white disabled:opacity-50">
           実行
         </button>
+      </div>
+    </Overlay>
+  );
+}
+
+function AcceptModal({ pending, onConfirm, onClose }: { pending: boolean; onConfirm: (guaranteed: boolean) => void; onClose: () => void }) {
+  const [guaranteed, setGuaranteed] = useState(true);
+  return (
+    <Overlay onClose={onClose}>
+      <div className="text-[15px] font-bold">取引を開始する</div>
+      <div className="mt-2 text-[12.5px] text-(--color-brand-sub)">受注側として、この取引に売掛保証を適用するか選べます（代金を受け取る側の判断です）。</div>
+      <button
+        type="button"
+        onClick={() => setGuaranteed((g) => !g)}
+        className="mt-3 flex w-full items-center gap-2.5 rounded-2xl border p-3.5 text-left"
+        style={{ background: guaranteed ? "var(--color-brand-green-soft)" : "#fff", borderColor: guaranteed ? "var(--color-brand-green)" : "var(--color-brand-line)" }}
+      >
+        <span className="text-[20px]" aria-hidden>🛡️</span>
+        <div className="flex-1">
+          <div className="text-[13.5px] font-bold text-(--color-brand-ink)">売掛保証をつける</div>
+          <div className="text-[11.5px] text-(--color-brand-sub)">保証会社と連携予定（表示のみ）</div>
+        </div>
+        <span className="relative h-[26px] w-11 rounded-full transition-colors" style={{ background: guaranteed ? "var(--color-brand-green)" : "var(--color-brand-line)" }}>
+          <span className="absolute top-[3px] h-5 w-5 rounded-full bg-white transition-all" style={{ left: guaranteed ? 21 : 3 }} />
+        </span>
+      </button>
+      <div className="mt-4 flex gap-2">
+        <button onClick={onClose} className="flex-1 rounded-xl border border-(--color-brand-line) py-2.5 text-[14px] font-bold text-(--color-brand-sub)">キャンセル</button>
+        <button onClick={() => onConfirm(guaranteed)} disabled={pending} className="flex-1 rounded-xl bg-(--color-brand-blue) py-2.5 text-[14px] font-bold text-white disabled:opacity-50">取引を開始する</button>
       </div>
     </Overlay>
   );

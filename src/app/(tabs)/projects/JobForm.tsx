@@ -25,7 +25,6 @@ export interface JobFormState {
   work: string;
   belongings: string;
   deadline: string;
-  guaranteed: boolean;
 }
 
 const EMPTY: JobFormState = {
@@ -47,7 +46,6 @@ const EMPTY: JobFormState = {
   work: "",
   belongings: "ヘルメット・フルハーネス・安全靴",
   deadline: "",
-  guaranteed: true,
 };
 
 const fmtMoney = (raw: string) => {
@@ -93,7 +91,6 @@ export function JobForm({
     ["支払条件", `${f.closing}締め・${f.payTerm}払い`],
     ["持ち物", f.belongings || "-"],
     ["募集締切", f.deadline || f.start],
-    ["売掛保証", f.guaranteed ? "つける" : "つけない"],
   ];
 
   return (
@@ -102,7 +99,6 @@ export function JobForm({
       <input type="hidden" name="jobType" value={f.jobType} />
       <input type="hidden" name="payType" value={f.payType} />
       <input type="hidden" name="unitPrice" value={f.price} />
-      <input type="hidden" name="guaranteed" value={f.guaranteed ? "on" : ""} />
 
       <div className="rounded-xl border border-(--color-brand-blue-light) bg-(--color-brand-blue-soft) p-3 text-[12.5px] leading-relaxed text-(--color-brand-sub)">
         公開すると（LINE連携時は）グループへ新着通知が届きます。募集の入口はLINE、正式な取引はこのアプリで記録します。
@@ -165,22 +161,13 @@ export function JobForm({
       <div><label className={label}>持ち物</label><input name="belongings" value={f.belongings} onChange={(e) => set("belongings", e.target.value)} placeholder="ヘルメット・フルハーネス・安全靴" className={input} /></div>
       <div><label className={label}>募集締切</label><input name="deadline" value={f.deadline} onChange={(e) => set("deadline", e.target.value)} type="date" className={input} /></div>
 
-      {/* 売掛保証（プロトタイプ準拠のトグルカード） */}
-      <button
-        type="button"
-        onClick={() => set("guaranteed", !f.guaranteed)}
-        className="flex w-full items-center gap-2.5 rounded-2xl border p-3.5 text-left"
-        style={{ background: f.guaranteed ? "var(--color-brand-green-soft)" : "#fff", borderColor: f.guaranteed ? "var(--color-brand-green)" : "var(--color-brand-line)" }}
-      >
+      {/* 売掛保証は受注側（協力会社）が受注時に選択する */}
+      <div className="flex items-center gap-2.5 rounded-2xl border border-(--color-brand-line) bg-(--color-brand-bg) p-3.5">
         <span className="text-[20px]" aria-hidden>🛡️</span>
-        <div className="flex-1">
-          <div className="text-[13.5px] font-bold text-(--color-brand-ink)">売掛保証をつける</div>
-          <div className="text-[11.5px] text-(--color-brand-sub)">保証会社と連携予定（表示のみ）</div>
+        <div className="flex-1 text-[12px] leading-relaxed text-(--color-brand-sub)">
+          売掛保証は、代金を受け取る<span className="font-bold text-(--color-brand-ink)">受注側（協力会社）</span>が受注時に適用するか選択します。
         </div>
-        <span className="relative h-[26px] w-11 rounded-full transition-colors" style={{ background: f.guaranteed ? "var(--color-brand-green)" : "var(--color-brand-line)" }}>
-          <span className="absolute top-[3px] h-5 w-5 rounded-full bg-white transition-all" style={{ left: f.guaranteed ? 21 : 3 }} />
-        </span>
-      </button>
+      </div>
 
       {state && !state.ok && state.error && (
         <div className="rounded-lg bg-(--color-brand-red-soft) px-3 py-2 text-[12.5px] font-semibold text-(--color-brand-red)">{state.error}</div>
