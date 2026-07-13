@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "../lib/supabase/server";
 import { CompanyId } from "../domain/shared";
 
@@ -22,7 +23,7 @@ function readIsAdmin(appMetadata: Record<string, unknown> | undefined): boolean 
  * 役割（元請/協力）はここでは決めない — 取引ごとに prime_company_id / partner_company_id と
  * この companyId を突き合わせて自動判定する（グローバルな役割属性は持たない）。
  */
-export async function getAuthContext(): Promise<AuthContext> {
+export const getAuthContext = cache(async function getAuthContext(): Promise<AuthContext> {
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) {
@@ -46,7 +47,7 @@ export async function getAuthContext(): Promise<AuthContext> {
   }
 
   return { user, isAdmin, companyId };
-}
+});
 
 export async function requireUser(): Promise<AuthContext> {
   const ctx = await getAuthContext();
