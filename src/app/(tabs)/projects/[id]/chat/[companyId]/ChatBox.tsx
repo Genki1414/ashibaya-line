@@ -161,25 +161,24 @@ export function ChatBox({
 
       <div className={`border-t border-(--color-brand-line) bg-white p-3 ${embedded ? "" : "sticky bottom-0"}`}>
         {error && <div className="mb-2 rounded-lg bg-(--color-brand-red-soft) px-3 py-1.5 text-[12px] font-semibold text-(--color-brand-red)">{error}</div>}
-        <input
-          ref={fileRef}
-          type="file"
-          className="hidden"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) void onPickFile(f);
-          }}
-        />
         <div className="flex items-end gap-2">
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            disabled={busy}
+          <label
             title="写真・ファイルを添付"
-            className="shrink-0 rounded-2xl border border-(--color-brand-line) px-3 py-2.5 text-[16px] disabled:opacity-50"
+            className={`flex shrink-0 items-center gap-1 rounded-2xl border border-(--color-brand-line) px-3 py-2.5 text-[13px] font-bold text-(--color-brand-sub) ${busy ? "opacity-50" : "cursor-pointer"}`}
           >
-            {uploading ? "…" : "＋"}
-          </button>
+            <span className="text-[16px] leading-none" aria-hidden>{uploading ? "…" : "📎"}</span>
+            <span>添付</span>
+            <input
+              ref={fileRef}
+              type="file"
+              className="hidden"
+              disabled={busy}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void onPickFile(f);
+              }}
+            />
+          </label>
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
