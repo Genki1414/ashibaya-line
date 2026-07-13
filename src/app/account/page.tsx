@@ -19,6 +19,7 @@ export default async function AccountPage() {
   let companyName = "（未所属）";
   let level = "unverified";
   let completed = 0;
+  let status: string = "active";
   if (ctx.companyId) {
     const { data } = await supabase.from("companies").select("*").eq("id", ctx.companyId).maybeSingle();
     if (data) {
@@ -26,6 +27,7 @@ export default async function AccountPage() {
       companyName = c.name;
       level = companyCreditLevel(c, false);
       completed = c.metrics.completed;
+      status = c.status ?? "active";
     }
   }
 
@@ -54,6 +56,19 @@ export default async function AccountPage() {
           <div className="mt-1 text-[12px] text-(--color-brand-red)">会社に所属していません。本部管理者にメンバー登録を依頼してください。</div>
         )}
       </div>
+
+      {ctx.companyId && status !== "active" && (
+        <div className="mt-3 rounded-2xl border border-(--color-brand-amber) bg-(--color-brand-amber-soft) p-4">
+          <div className="text-[13px] font-bold text-(--color-brand-ink)">
+            {status === "pending" ? "本部の承認待ちです" : "利用が停止されています"}
+          </div>
+          <div className="mt-1 text-[12px] text-(--color-brand-sub)">
+            {status === "pending"
+              ? "会社プロフィールや認証書類の準備は今すぐ行えます。案件の発注・受注は本部の承認後に解禁されます。"
+              : "利用が停止されています。本部管理者にお問い合わせください。"}
+          </div>
+        </div>
+      )}
 
       <div className="mt-3 rounded-2xl border border-(--color-brand-line) bg-(--color-brand-blue-soft) p-4 text-[12px] leading-relaxed text-(--color-brand-sub)">
         Phase 1（認証基盤）が有効です。案件・取引などの画面は順次このアカウントに接続していきます。

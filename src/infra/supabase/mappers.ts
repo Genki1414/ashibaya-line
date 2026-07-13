@@ -19,6 +19,7 @@ export interface CompanyRow {
   registered: string;
   verify: VerifyRecord;
   metrics: CompanyMetrics;
+  status?: Company["status"];
 }
 
 export function companyToRow(company: Company): CompanyRow {
@@ -32,6 +33,7 @@ export function companyToRow(company: Company): CompanyRow {
     registered: company.registeredAt,
     verify: company.verify,
     metrics: company.metrics,
+    status: company.status ?? "active",
   };
 }
 
@@ -46,6 +48,7 @@ export function rowToCompany(row: CompanyRow): Company {
     registeredAt: row.registered,
     verify: row.verify,
     metrics: row.metrics,
+    status: row.status ?? "active",
   };
 }
 
