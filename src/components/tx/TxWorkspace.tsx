@@ -169,6 +169,26 @@ export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, ne
         {nextHint && <div className="mt-1 text-[12px] text-(--color-brand-sub)">{nextHint}</div>}
       </div>
 
+      {/* 変更通知（上部に目立たせる。受注側は確認ボタン付き） */}
+      {tx.scheduleNotice && !tx.scheduleNotice.acknowledged && (
+        <ChangeBanner
+          title={role === "prime" ? "工期・予定を変更しました（相手の確認待ち）" : "元請が工期・予定を変更しました"}
+          rows={tx.scheduleNotice.changes.map((c) => ({ field: c.field, from: dmd(c.from), to: dmd(c.to) }))}
+          canAck={role === "partner"}
+          pending={pending}
+          onAck={() => dispatch({ txId: tx.id, key: "acknowledgeSchedule" })}
+        />
+      )}
+      {tx.infoNotice && !tx.infoNotice.acknowledged && (
+        <ChangeBanner
+          title={role === "prime" ? "案件情報を変更しました（相手の確認待ち）" : "元請が案件情報を変更しました"}
+          rows={tx.infoNotice.changes.map((c) => ({ field: c.field, from: c.from, to: c.to }))}
+          canAck={role === "partner"}
+          pending={pending}
+          onAck={() => dispatch({ txId: tx.id, key: "acknowledgeInfo" })}
+        />
+      )}
+
       {/* あなたの操作（要対応） */}
       <div className="rounded-2xl border border-(--color-brand-amber) bg-(--color-brand-amber-soft) p-4">
         <div className="mb-2 flex items-center gap-2">
@@ -229,21 +249,6 @@ export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, ne
 
       {/* 工期・予定変更 */}
       <Section title="工期・予定" highlight={hasPending("schedule")}>
-        {tx.scheduleNotice && !tx.scheduleNotice.acknowledged && (
-          <div className="mb-2.5 rounded-xl border border-(--color-brand-amber) bg-(--color-brand-amber-soft) p-3">
-            <div className="mb-1.5 text-[12.5px] font-bold" style={{ color: "#9A6612" }}>
-              {role === "prime" ? "工期・予定を変更しました（相手の確認待ち）" : "工期・予定の変更があります（要確認）"}
-            </div>
-            {tx.scheduleNotice.changes.map((c, i) => (
-              <div key={i} className="flex flex-wrap items-center gap-x-1.5 text-[12.5px]" style={{ color: "#7A5410" }}>
-                <span className="font-bold">{c.field}</span>
-                <span className="line-through opacity-70">{dmd(c.from)}</span>
-                <span>→</span>
-                <span className="font-bold">{dmd(c.to)}</span>
-              </div>
-            ))}
-          </div>
-        )}
         <Row label="工期" value={`${dmd(tx.overallSchedule.plannedStart)}〜${dmd(tx.overallSchedule.plannedEnd)}`} />
         {activePhaseKeys(tx).map((phase) => (
           <Row
@@ -263,21 +268,6 @@ export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, ne
 
       {/* 案件情報 */}
       <Section title="案件情報 / 当事者" highlight={hasPending("info")}>
-        {tx.infoNotice && !tx.infoNotice.acknowledged && (
-          <div className="mb-2.5 rounded-xl border border-(--color-brand-amber) bg-(--color-brand-amber-soft) p-3">
-            <div className="mb-1.5 text-[12.5px] font-bold" style={{ color: "#9A6612" }}>
-              {role === "prime" ? "案件情報を変更しました（相手の確認待ち）" : "案件情報の変更があります（要確認）"}
-            </div>
-            {tx.infoNotice.changes.map((c, i) => (
-              <div key={i} className="flex flex-wrap items-center gap-x-1.5 text-[12.5px]" style={{ color: "#7A5410" }}>
-                <span className="font-bold">{c.field}</span>
-                <span className="line-through opacity-70">{c.from}</span>
-                <span>→</span>
-                <span className="font-bold">{c.to}</span>
-              </div>
-            ))}
-          </div>
-        )}
         <Row label="現場" value={`${tx.region} ${tx.address}`} />
         <Row label="元請" value={`${prime.name}（${LEVEL_JP[prime.level] ?? prime.level}）`} />
         <Row label="協力会社" value={`${partner.name}（${LEVEL_JP[partner.level] ?? partner.level}）`} />
@@ -628,6 +618,44 @@ function FormModal({
         </>
       )}
     </Overlay>
+  );
+}
+
+function ChangeBanner({
+  title,
+  rows,
+  canAck,
+  pending,
+  onAck,
+}: {
+  title: string;
+  rows: { field: string; from: string; to: string }[];
+  canAck: boolean;
+  pending: boolean;
+  onAck: () => void;
+}) {
+  return (
+    <div className="rounded-2xl border border-(--color-brand-amber) bg-(--color-brand-amber-soft) p-4">
+      <div className="mb-2 flex items-center gap-1.5 text-[13px] font-bold" style={{ color: "#9A6612" }}>
+        <span aria-hidden>⚠️</span>
+        {title}
+      </div>
+      <div className="space-y-1">
+        {rows.map((c, i) => (
+          <div key={i} className="flex flex-wrap items-center gap-x-1.5 text-[12.5px]" style={{ color: "#7A5410" }}>
+            <span className="font-bold">{c.field}</span>
+            <span className="line-through opacity-70">{c.from}</span>
+            <span>→</span>
+            <span className="font-bold">{c.to}</span>
+          </div>
+        ))}
+      </div>
+      {canAck && (
+        <button onClick={onAck} disabled={pending} className="mt-3 w-full rounded-xl bg-(--color-brand-amber) py-2.5 text-[13.5px] font-bold text-white disabled:opacity-50">
+          変更を確認しました
+        </button>
+      )}
+    </div>
   );
 }
 
