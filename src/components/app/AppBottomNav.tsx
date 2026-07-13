@@ -15,7 +15,7 @@ export function AppBottomNav() {
   const pathname = usePathname();
   return (
     <nav
-      className="fixed bottom-0 left-1/2 z-20 flex w-full max-w-[460px] -translate-x-1/2 border-t border-(--color-brand-line) bg-white px-1 pt-2"
+      className="fixed inset-x-0 bottom-0 z-20 mx-auto flex w-full max-w-[460px] border-t border-(--color-brand-line) bg-white px-1 pt-2"
       style={{ paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom))" }}
     >
       {TABS.map((t) => {
