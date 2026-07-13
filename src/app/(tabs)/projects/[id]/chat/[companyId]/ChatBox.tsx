@@ -22,11 +22,13 @@ export function ChatBox({
   partnerCompanyId,
   role,
   messages,
+  embedded = false,
 }: {
   projectId: string;
   partnerCompanyId: string;
   role: Actor;
   messages: ChatMessage[];
+  embedded?: boolean;
 }) {
   const router = useRouter();
   const [text, setText] = useState("");
@@ -54,8 +56,8 @@ export function ChatBox({
   };
 
   return (
-    <div className="flex min-h-[calc(100dvh-56px)] flex-col">
-      <div className="flex-1 space-y-2.5 p-4">
+    <div className={embedded ? "flex flex-col overflow-hidden rounded-2xl border border-(--color-brand-line) bg-(--color-brand-bg)" : "flex min-h-[calc(100dvh-56px)] flex-col"}>
+      <div className={embedded ? "max-h-72 space-y-2.5 overflow-y-auto p-3" : "flex-1 space-y-2.5 p-4"}>
         {messages.length === 0 ? (
           <div className="mt-8 text-center text-[12.5px] text-(--color-brand-sub)">
             まだメッセージはありません。<br />募集の相談・条件確認などにご利用ください。
@@ -86,7 +88,7 @@ export function ChatBox({
         )}
       </div>
 
-      <div className="sticky bottom-0 border-t border-(--color-brand-line) bg-white p-3">
+      <div className={`border-t border-(--color-brand-line) bg-white p-3 ${embedded ? "" : "sticky bottom-0"}`}>
         {error && <div className="mb-2 rounded-lg bg-(--color-brand-red-soft) px-3 py-1.5 text-[12px] font-semibold text-(--color-brand-red)">{error}</div>}
         <div className="flex items-end gap-2">
           <textarea

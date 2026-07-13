@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app/AppShell";
-import { TxWorkspace } from "@/components/tx/TxWorkspace";
+import { TxWorkspace, type EmbeddedChat } from "@/components/tx/TxWorkspace";
 import { loadTxDetail, statusLabel } from "@/server/txData";
+import { loadChat } from "@/server/chatData";
 import { availableActions, nextHint } from "@/domain/transaction";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +12,14 @@ export default async function TransactionDetailPage({ params }: { params: Promis
   const detail = await loadTxDetail(id);
   if (!detail) notFound();
   const { tx, role, prime, partner, timeline } = detail;
+
+  // 取引内に埋め込む案件チャット（応募〜取引で同一チャットを継続）。
+  const [projectId, partnerCompanyId] = (tx.chatKey as string).split(":");
+  const chatDetail = await loadChat(projectId, partnerCompanyId);
+  const chat: EmbeddedChat | null =
+    chatDetail && chatDetail !== "unavailable"
+      ? { projectId: chatDetail.projectId, partnerCompanyId: chatDetail.partnerCompanyId, role: chatDetail.role, messages: chatDetail.messages }
+      : null;
 
   return (
     <AppShell title={tx.projectName} back="/transactions" noPad>
@@ -23,6 +32,7 @@ export default async function TransactionDetailPage({ params }: { params: Promis
         statusLabel={statusLabel(tx)}
         nextHint={nextHint(tx)}
         timeline={timeline}
+        chat={chat}
       />
     </AppShell>
   );

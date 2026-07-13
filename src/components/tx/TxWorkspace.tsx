@@ -8,6 +8,15 @@ import { activePhaseKeys, phaseLabel } from "@/domain/transaction";
 import { runTransactionAction, type TransactionActionInput } from "@/app/(tabs)/transactions/actions";
 import { CreditTimeline } from "./CreditTimeline";
 import type { TimelineEntry } from "@/lib/txTimeline";
+import { ChatBox } from "@/app/(tabs)/projects/[id]/chat/[companyId]/ChatBox";
+import type { ChatMessage } from "@/server/chatData";
+
+export interface EmbeddedChat {
+  projectId: string;
+  partnerCompanyId: string;
+  role: Actor;
+  messages: ChatMessage[];
+}
 
 type Field = {
   name: string;
@@ -97,9 +106,10 @@ export interface TxWorkspaceProps {
   statusLabel: string;
   nextHint: string;
   timeline: TimelineEntry[];
+  chat: EmbeddedChat | null;
 }
 
-export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, nextHint, timeline }: TxWorkspaceProps) {
+export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, nextHint, timeline, chat }: TxWorkspaceProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [toast, setToast] = useState<{ ok: boolean; message: string } | null>(null);
@@ -296,18 +306,24 @@ export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, ne
           <SmallButton disabled={pending || tx.ashibase.linked} onClick={() => setConfirmAction({ key: "linkAshiBase", label: "AshiBaseへ連携" })}>
             {tx.ashibase.linked ? "AshiBase連携済み" : "AshiBaseへ連携"}
           </SmallButton>
-          {(() => {
-            const [projectId, partnerId] = tx.chatKey.split(":");
-            return (
-              <Link
-                href={`/projects/${projectId}/chat/${partnerId}`}
-                className="rounded-lg border border-(--color-brand-blue) px-3 py-1.5 text-[12.5px] font-bold text-(--color-brand-blue)"
-              >
-                チャットを開く
-              </Link>
-            );
-          })()}
         </div>
+      </Section>
+
+      {/* 案件チャット（応募〜取引で同一チャットを継続） */}
+      <Section title="案件チャット" defaultOpen>
+        <div className="mb-2 text-[12px] text-(--color-brand-sub)">応募時からのやり取りをそのまま継続できます。</div>
+        {chat ? (
+          <>
+            <ChatBox projectId={chat.projectId} partnerCompanyId={chat.partnerCompanyId} role={chat.role} messages={chat.messages} embedded />
+            <div className="mt-2 text-right">
+              <Link href={`/projects/${chat.projectId}/chat/${chat.partnerCompanyId}`} className="text-[12.5px] font-bold text-(--color-brand-blue)">
+                全画面で開く ›
+              </Link>
+            </div>
+          </>
+        ) : (
+          <div className="text-[12.5px] text-(--color-brand-sub)">チャットは本番環境（Supabase接続時）で利用できます。</div>
+        )}
       </Section>
 
       {/* 信用タイムライン：この取引で起きたこと（完了時に信用実績へ反映） */}
@@ -469,8 +485,8 @@ function defaultsFor(tx: Transaction, action: AvailableAction): Record<string, s
   return d;
 }
 
-function Section({ title, highlight, children }: { title: string; highlight?: boolean; children: React.ReactNode }) {
-  const [open, setOpen] = useState(!!highlight);
+function Section({ title, highlight, defaultOpen, children }: { title: string; highlight?: boolean; defaultOpen?: boolean; children: React.ReactNode }) {
+  const [open, setOpen] = useState(!!highlight || !!defaultOpen);
   return (
     <div
       className="overflow-hidden rounded-2xl border bg-white"
