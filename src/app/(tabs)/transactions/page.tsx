@@ -26,7 +26,7 @@ export default async function TransactionsPage() {
   return (
     <>
       <Header title="取引" />
-      <CompanySwitch options={options} current={acting as string} />
+      {container.mode === "demo" && <CompanySwitch options={options} current={acting as string} />}
       <div className="space-y-3 p-4">
         {txs.length === 0 && (
           <div className="rounded-2xl border border-(--color-brand-line) bg-white p-4 text-sm text-(--color-brand-sub)">

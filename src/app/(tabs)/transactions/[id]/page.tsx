@@ -61,7 +61,7 @@ export default async function TransactionDetailPage({ params }: { params: Promis
   return (
     <>
       <Header title={tx.projectName} />
-      <CompanySwitch options={options} current={acting as string} />
+      {container.mode === "demo" && <CompanySwitch options={options} current={acting as string} />}
       <div className="px-4 pt-3">
         <Link href="/transactions" className="text-[12.5px] font-bold text-(--color-brand-blue)">← 取引一覧</Link>
       </div>

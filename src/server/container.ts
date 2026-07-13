@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { CompanyId, systemClock } from "../domain/shared";
+import { getAuthContext } from "./auth";
 import { Company } from "../domain/company";
 import { Transaction } from "../domain/transaction";
 import {
@@ -37,10 +38,14 @@ function newId(): string {
   return crypto.randomUUID();
 }
 
-async function readActingCompanyId(): Promise<CompanyId> {
+/** デモ運用時のみ有効な擬似ログイン（会社切替）。本番(Supabaseモード)では使わない。 */
+async function readDemoCompanyId(): Promise<CompanyId> {
   const store = await cookies();
   return CompanyId(store.get(ACTING_COMPANY_COOKIE)?.value ?? DEFAULT_ACTING_COMPANY);
 }
+
+/** Supabaseモードの識別は cookie ではなくログインセッション（所属会社）から解決する。 */
+const NO_COMPANY = CompanyId("__none__");
 
 function supabaseConfigured(): boolean {
   return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
@@ -87,10 +92,17 @@ async function supabaseContainer(actingCompanyId: CompanyId): Promise<Container>
 }
 
 /**
- * 合成ルート。Supabase の環境変数があれば Supabase 実装、無ければデモ用インメモリ実装。
- * 「操作する会社（＝擬似ログイン）」は cookie で切り替える（v8 の役割スイッチの置き換え）。
+ * 合成ルート。Supabase の環境変数があれば Supabase 実装（識別＝ログインセッションの所属会社）、
+ * 無ければデモ用インメモリ実装（識別＝cookieの擬似ログイン）。
+ * 本番(NODE_ENV=production)では Supabase 接続を必須とする。
  */
 export async function getContainer(): Promise<Container> {
-  const actingCompanyId = await readActingCompanyId();
-  return supabaseConfigured() ? supabaseContainer(actingCompanyId) : demoContainer(actingCompanyId);
+  if (!supabaseConfigured()) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("本番環境では Supabase 接続が必須です（NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY 未設定）");
+    }
+    return demoContainer(await readDemoCompanyId());
+  }
+  const ctx = await getAuthContext();
+  return supabaseContainer(ctx.companyId ?? NO_COMPANY);
 }
