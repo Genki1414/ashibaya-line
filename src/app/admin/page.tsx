@@ -30,15 +30,22 @@ export default async function AdminPage() {
   const companies = (companyRows ?? []).map((r) => rowToCompany(r as unknown as CompanyRow));
 
   // メンバー（会社ID→メールの一覧）。auth.users は service_role でのみ引ける。
-  const admin = createAdminClient();
-  const { data: memberships } = await admin.from("company_users").select("auth_user_id, company_id");
-  const { data: userList } = await admin.auth.admin.listUsers();
-  const emailById = new Map((userList?.users ?? []).map((u) => [u.id, u.email ?? u.id]));
+  // サービスロール鍵が未設定でもページを 500 にせず、原因を画面に表示する。
   const membersByCompany = new Map<string, string[]>();
-  for (const m of (memberships ?? []) as { auth_user_id: string; company_id: string }[]) {
-    const arr = membersByCompany.get(m.company_id) ?? [];
-    arr.push(emailById.get(m.auth_user_id) ?? m.auth_user_id);
-    membersByCompany.set(m.company_id, arr);
+  let adminError: string | null = null;
+  try {
+    const admin = createAdminClient();
+    const { data: memberships } = await admin.from("company_users").select("auth_user_id, company_id");
+    const { data: userList, error: listError } = await admin.auth.admin.listUsers();
+    if (listError) adminError = `メンバー一覧の取得に失敗: ${listError.message}`;
+    const emailById = new Map((userList?.users ?? []).map((u) => [u.id, u.email ?? u.id]));
+    for (const m of (memberships ?? []) as { auth_user_id: string; company_id: string }[]) {
+      const arr = membersByCompany.get(m.company_id) ?? [];
+      arr.push(emailById.get(m.auth_user_id) ?? m.auth_user_id);
+      membersByCompany.set(m.company_id, arr);
+    }
+  } catch (e) {
+    adminError = e instanceof Error ? e.message : "サービスロール鍵（SUPABASE_SERVICE_ROLE_KEY）が未設定です";
   }
 
   const views: CompanyView[] = companies.map((c) => ({
@@ -62,6 +69,16 @@ export default async function AdminPage() {
           <button className="rounded-lg border border-(--color-brand-line) px-3 py-1.5 text-[12.5px] font-bold text-(--color-brand-sub)">ログアウト</button>
         </form>
       </header>
+
+      {adminError && (
+        <div className="mb-3 rounded-xl border border-(--color-brand-red) bg-(--color-brand-red-soft) p-3 text-[12.5px] text-(--color-brand-red)">
+          <div className="font-bold">サービスロール接続エラー</div>
+          <div className="mt-1">{adminError}</div>
+          <div className="mt-1 text-(--color-brand-sub)">
+            Vercel の環境変数 <code>SUPABASE_SERVICE_ROLE_KEY</code>（Secret key）を設定し、Redeploy してください。会社の作成・メンバー作成にはこの鍵が必要です。
+          </div>
+        </div>
+      )}
 
       <AdminForms companies={views.map((v) => ({ id: v.id, name: v.name }))} />
 
