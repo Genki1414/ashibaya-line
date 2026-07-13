@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Transaction, AvailableAction, Actor, PhaseKey } from "@/domain/transaction";
+import { activePhaseKeys, phaseLabel } from "@/domain/transaction";
 import { runTransactionAction, type TransactionActionInput } from "@/app/(tabs)/transactions/actions";
 import { CreditTimeline } from "./CreditTimeline";
 import type { TimelineEntry } from "@/lib/txTimeline";
@@ -180,8 +181,8 @@ export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, ne
         <Row label="注文請書" value={tx.order.acknowledgement ? `発行済み（${dmd(tx.order.acknowledgement.issuedAt)}）` : "未発行"} />
       </Section>
 
-      {/* 組立 / 解体 */}
-      {(["assembly", "dismantle"] as PhaseKey[]).map((phase) => (
+      {/* 作業フェーズ（請負＝組立/解体、応援＝作業のみ） */}
+      {activePhaseKeys(tx).map((phase) => (
         <PhasePanel key={phase} tx={tx} phase={phase} highlight={hasPending(phase)} />
       ))}
 
@@ -216,8 +217,13 @@ export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, ne
         ) : (
           <>
             <Row label="工期" value={`${dmd(tx.overallSchedule.plannedStart)}〜${dmd(tx.overallSchedule.plannedEnd)}`} />
-            <Row label="組立予定" value={`${dmd(tx.phases.assembly.schedule.plannedStart)}〜${dmd(tx.phases.assembly.schedule.plannedEnd)}`} />
-            <Row label="解体予定" value={`${dmd(tx.phases.dismantle.schedule.plannedStart)}〜${dmd(tx.phases.dismantle.schedule.plannedEnd)}`} />
+            {activePhaseKeys(tx).map((phase) => (
+              <Row
+                key={phase}
+                label={phaseLabel(tx, phase) ? `${phaseLabel(tx, phase)}予定` : "作業予定"}
+                value={`${dmd(tx.phases[phase].schedule.plannedStart)}〜${dmd(tx.phases[phase].schedule.plannedEnd)}`}
+              />
+            ))}
           </>
         )}
       </Section>
@@ -336,9 +342,9 @@ function Section({ title, highlight, children }: { title: string; highlight?: bo
 
 function PhasePanel({ tx, phase, highlight }: { tx: Transaction; phase: PhaseKey; highlight?: boolean }) {
   const p = tx.phases[phase];
-  const label = phase === "assembly" ? "組立" : "解体";
+  const label = phaseLabel(tx, phase); // 応援（単相）は空文字
   return (
-    <Section title={`${label}フェーズ`} highlight={highlight}>
+    <Section title={label ? `${label}フェーズ` : "作業フェーズ"} highlight={highlight}>
       <Row label="予定" value={`${dmd(p.schedule.plannedStart)}〜${dmd(p.schedule.plannedEnd)}`} />
       <Row label="実績" value={`${dmd(p.work.startDate)}〜${dmd(p.work.endDate)}`} />
       <Row label="作業" value={WORK_JP[p.work.status]} />

@@ -103,8 +103,14 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             <InfoRow label="地域" value={project.region} />
             <InfoRow label="現場住所" value={project.address} />
             <InfoRow label="工期" value={`${d(project.overallSchedule.plannedStart)} 〜 ${d(project.overallSchedule.plannedEnd)}`} />
-            <InfoRow label="組立予定" value={`${d(project.assemblySchedule.plannedStart)} 〜 ${d(project.assemblySchedule.plannedEnd)}`} />
-            <InfoRow label="解体予定" value={`${d(project.dismantleSchedule.plannedStart)} 〜 ${d(project.dismantleSchedule.plannedEnd)}`} />
+            {project.jobType === "support" ? (
+              <InfoRow label="作業予定" value={`${d(project.assemblySchedule.plannedStart)} 〜 ${d(project.assemblySchedule.plannedEnd)}`} />
+            ) : (
+              <>
+                <InfoRow label="組立予定" value={`${d(project.assemblySchedule.plannedStart)} 〜 ${d(project.assemblySchedule.plannedEnd)}`} />
+                <InfoRow label="解体予定" value={`${d(project.dismantleSchedule.plannedStart)} 〜 ${d(project.dismantleSchedule.plannedEnd)}`} />
+              </>
+            )}
             <InfoRow label={project.jobType === "contract" ? "請負金額" : "単価（日額）"} value={yen(project.unitPrice)} />
             {project.need != null && <InfoRow label="募集人数" value={`${project.need}名`} />}
             <InfoRow label="支払方式" value={PAY_LABEL[project.payType] ?? project.payType} />

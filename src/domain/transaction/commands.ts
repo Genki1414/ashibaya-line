@@ -195,7 +195,7 @@ function requireBillablePhase(tx: Transaction, phase: PhaseKey): Result<true> {
   if (tx.phases[phase].work.status !== "confirmed") {
     return err(new DomainError("WORK_NOT_CONFIRMED", "作業完了の確認が済むまで請求できません"));
   }
-  if (!canBillPhase(tx.payType, phase)) {
+  if (!canBillPhase(tx, phase)) {
     return err(new DomainError("PHASE_NOT_BILLABLE", "一括請負では組立分は請求しません（解体完了後に全額請求します）"));
   }
   return ok(true);
