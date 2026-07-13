@@ -117,6 +117,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             <InfoRow label="持ち物" value={project.belongings} />
             <InfoRow label="募集締切" value={d(project.applicationDeadline)} />
             <InfoRow label="売掛保証" value="受注時に受注側が選択" />
+            <InfoRow label="応募状況" value={recruiting ? `現在 ${project.applicantIds.length} 社が応募中` : "選定済み"} />
           </Card>
           {project.workDescription && (
             <div className="mt-2 rounded-2xl border border-(--color-brand-line) bg-white p-3.5 text-[13px] leading-relaxed text-(--color-brand-ink)">
@@ -153,13 +154,19 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               <div className="space-y-2.5">
                 {applicants.map((a) => (
                   <Card key={a.id}>
-                    <div className="flex items-center justify-between">
+                    <Link
+                      href={`/companies/${a.id}?from=/projects/${project.id as unknown as string}`}
+                      className="flex items-center justify-between"
+                    >
                       <div>
                         <div className="text-[14.5px] font-bold text-(--color-brand-ink)">{a.name}</div>
                         <div className="mt-0.5 text-[12px] text-(--color-brand-sub)">{a.region}・完了{a.metrics.completed}件</div>
                       </div>
-                      <LevelBadge level={companyCreditLevel(a, true)} />
-                    </div>
+                      <div className="flex items-center gap-1.5">
+                        <LevelBadge level={companyCreditLevel(a, true)} />
+                        <span className="text-[13px] font-bold text-(--color-brand-blue)">›</span>
+                      </div>
+                    </Link>
                     <div className="mt-3 flex items-center gap-2">
                       <Link
                         href={`/projects/${project.id as unknown as string}/chat/${a.id}`}

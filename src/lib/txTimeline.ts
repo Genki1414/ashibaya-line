@@ -24,6 +24,8 @@ export function describeEvent(event: StoredEvent): TimelineEntry {
   const base = { type: event.type, occurredAt: event.occurredAt };
 
   switch (event.type) {
+    case "ProjectMatched":
+      return { ...base, label: "協力会社が選定されました", detail: "取引が作成されました", kind: "milestone" };
     case "TransactionStarted":
       return { ...base, label: "取引を開始（受注側が受諾）", detail: null, kind: "milestone" };
     case "OrderIssued":
