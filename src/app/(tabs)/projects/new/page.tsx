@@ -10,7 +10,7 @@ export default async function NewProjectPage() {
   const { self } = await loadCompanyPageData();
   if (self && self.status !== "active") redirect("/projects");
   return (
-    <AppShell title="案件を投稿">
+    <AppShell title="案件を投稿" back="/projects">
       <PostJobForm />
     </AppShell>
   );
