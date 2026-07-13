@@ -2,7 +2,6 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getAuthContext } from "@/server/auth";
 
 export interface AuthActionResult {
   readonly ok: boolean;
@@ -17,13 +16,13 @@ export async function signIn(_prev: AuthActionResult | null, formData: FormData)
   if (!email || !password) return { ok: false, error: "メールアドレスとパスワードを入力してください" };
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return { ok: false, error: "メールアドレスまたはパスワードが違います" };
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error || !data.user) return { ok: false, error: "メールアドレスまたはパスワードが違います" };
 
-  // 管理者は管理画面、一般会社は自社ダッシュボードへ。next 指定があれば優先。
+  // 遷移先は今サインインしたユーザーから直接判定（同一リクエスト内の再取得に依存しない）。
   if (next && next.startsWith("/")) redirect(next);
-  const ctx = await getAuthContext();
-  redirect(ctx.isAdmin ? "/admin" : "/account");
+  const isAdmin = (data.user.app_metadata as Record<string, unknown> | undefined)?.is_admin === true;
+  redirect(isAdmin ? "/admin" : "/account");
 }
 
 export async function signOut(): Promise<void> {
