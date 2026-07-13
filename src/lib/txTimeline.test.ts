@@ -33,6 +33,12 @@ describe("txTimeline", () => {
     expect(describeEvent(ev("DepositConfirmed", { phase: "assembly", amount: 220000 })).kind).toBe("milestone");
   });
 
+  it("labels ProjectMatched in Japanese (no raw English in the timeline)", () => {
+    const entry = describeEvent(ev("ProjectMatched", { projectId: "p1", transactionId: "t1" }));
+    expect(entry.label).toBe("協力会社が選定されました");
+    expect(entry.kind).toBe("milestone");
+  });
+
   it("falls back to the raw type for unknown events", () => {
     expect(describeEvent(ev("SomethingNew", {})).label).toBe("SomethingNew");
   });
