@@ -21,11 +21,11 @@ export function AppBottomNav() {
           <Link
             key={t.href}
             href={t.href}
-            className="flex flex-1 flex-col items-center gap-0.5"
+            className="flex min-w-0 flex-1 flex-col items-center gap-0.5"
             style={{ color: active ? "var(--color-brand-blue)" : "var(--color-brand-faint)" }}
           >
             <span className="text-[18px] leading-none">{t.icon}</span>
-            <span className="text-[10px]" style={{ fontWeight: active ? 800 : 600 }}>{t.label}</span>
+            <span className="whitespace-nowrap text-[10px] leading-none" style={{ fontWeight: active ? 800 : 600 }}>{t.label}</span>
           </Link>
         );
       })}
