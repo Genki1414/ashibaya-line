@@ -36,20 +36,28 @@ export const getAuthContext = cache(async function getAuthContext(): Promise<Aut
     return { user: null, isAdmin: false, companyId: null };
   }
 
+  const appMeta = claims.app_metadata as Record<string, unknown> | undefined;
   const user: AuthUser = { id: String(claims.sub), email: claims.email ?? null };
-  const isAdmin = readIsAdmin(claims.app_metadata as Record<string, unknown> | undefined);
+  const isAdmin = readIsAdmin(appMeta);
 
   let companyId: CompanyId | null = null;
   if (!isAdmin) {
-    // company_users は「自分の所属のみ SELECT 可」（RLS）。所属会社を1件解決する。
-    const { data: membership } = await supabase
-      .from("company_users")
-      .select("company_id")
-      .eq("auth_user_id", user.id)
-      .limit(1)
-      .maybeSingle();
-    const cid = (membership as { company_id?: string } | null)?.company_id;
-    if (cid) companyId = CompanyId(cid);
+    // 所属会社IDは基本 JWT クレーム（app_metadata.company_id）から取得し、DB往復を省く。
+    const claimCompany = typeof appMeta?.company_id === "string" ? appMeta.company_id : null;
+    if (claimCompany) {
+      companyId = CompanyId(claimCompany);
+    } else {
+      // クレーム未埋め込みの旧アカウント向けフォールバック。
+      // company_users は「自分の所属のみ SELECT 可」（RLS）。所属会社を1件解決する。
+      const { data: membership } = await supabase
+        .from("company_users")
+        .select("company_id")
+        .eq("auth_user_id", user.id)
+        .limit(1)
+        .maybeSingle();
+      const cid = (membership as { company_id?: string } | null)?.company_id;
+      if (cid) companyId = CompanyId(cid);
+    }
   }
 
   return { user, isAdmin, companyId };

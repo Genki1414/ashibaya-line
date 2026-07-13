@@ -81,7 +81,15 @@ export async function createMember(_prev: AdminActionResult | null, formData: Fo
     if (!email || password.length < 8) return { ok: false, error: "メールアドレスと8文字以上のパスワードを入力してください" };
 
     const admin = createAdminClient();
-    const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true });
+    // 所属会社IDを app_metadata に埋め込む（＝JWTクレームに載る）。
+    // これにより毎リクエストの company_users 参照を省け、遷移が速くなる。
+    // app_metadata は管理者のみ変更可能なため、クレームとして信頼できる。
+    const { data, error } = await admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      app_metadata: { company_id: companyId },
+    });
     if (error || !data.user) return { ok: false, error: `アカウント作成に失敗しました: ${error?.message ?? "unknown"}` };
 
     const { error: linkError } = await admin.from("company_users").insert({ auth_user_id: data.user.id, company_id: companyId, role: "member" });
