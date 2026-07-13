@@ -16,6 +16,7 @@ export interface EmbeddedChat {
   partnerCompanyId: string;
   role: Actor;
   messages: ChatMessage[];
+  unread: number;
 }
 
 type Field = {
@@ -192,6 +193,16 @@ export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, ne
           onAck={() => dispatch({ txId: tx.id, key: "acknowledgeInfo" })}
         />
       )}
+      {chat && chat.unread > 0 && (
+        <a href="#tx-chat" className="flex items-center gap-2.5 rounded-2xl border p-4" style={{ borderColor: "var(--color-brand-purple, #6D4AC4)", background: "#EEE9FA" }}>
+          <span className="text-[18px]" aria-hidden>💬</span>
+          <div className="flex-1">
+            <div className="text-[13px] font-bold" style={{ color: "#4A2E9C" }}>新着メッセージが{chat.unread}件あります</div>
+            <div className="text-[12px]" style={{ color: "#6D4AC4" }}>下の案件チャットで内容を確認できます。</div>
+          </div>
+          <span className="text-[13px] font-bold" style={{ color: "#6D4AC4" }}>チャットを見る ›</span>
+        </a>
+      )}
 
       {/* あなたの操作（要対応） */}
       <div className="rounded-2xl border border-(--color-brand-amber) bg-(--color-brand-amber-soft) p-4">
@@ -312,6 +323,7 @@ export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, ne
       </Section>
 
       {/* 案件チャット（応募〜取引で同一チャットを継続） */}
+      <div id="tx-chat" className="scroll-mt-16" />
       <Section title="案件チャット" defaultOpen>
         <div className="mb-2 text-[12px] text-(--color-brand-sub)">応募時からのやり取りをそのまま継続できます。</div>
         {chat ? (
