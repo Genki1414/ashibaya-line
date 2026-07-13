@@ -37,10 +37,10 @@ function TxCard({ t }: { t: TxCardView }) {
           <span className="rounded-full px-2 py-0.5 text-[11px] font-bold" style={{ color: "#6D4AC4", background: "#EEE9FA" }}>💬 新着{t.unread}</span>
         )}
       </div>
-      <div className="text-[15.5px] font-bold text-(--color-brand-ink)">{t.projectName}</div>
+      <div className="text-[15.5px] font-bold break-words text-(--color-brand-ink)">{t.projectName}</div>
       <div className="mt-1.5 flex flex-wrap gap-x-3.5 gap-y-1 text-[12.5px] text-(--color-brand-sub)">
-        <span>📍 {t.region || "未設定"}</span>
-        <span>相手 {t.counterpartyName}</span>
+        <span className="min-w-0 break-words">📍 {t.region || "未設定"}</span>
+        <span className="min-w-0 break-words">相手 {t.counterpartyName}</span>
       </div>
       <div className="mt-2.5 flex items-center justify-between border-t border-(--color-brand-line) pt-2.5">
         <span className="text-[18px] font-black text-(--color-brand-blue)">{yen(t.amount)}</span>

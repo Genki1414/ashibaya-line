@@ -17,7 +17,7 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="mx-auto flex min-h-dvh max-w-[460px] flex-col bg-(--color-brand-bg)">
+    <div className="mx-auto flex min-h-dvh w-full max-w-[460px] flex-col overflow-x-clip bg-(--color-brand-bg)">
       <header className="sticky top-0 z-10 flex items-center gap-2 bg-(--color-brand-blue) px-4 py-3 text-white">
         {back ? (
           <Link href={back} className="flex h-7 w-7 items-center justify-center rounded-full bg-white/15 text-[16px] leading-none">‹</Link>
@@ -29,7 +29,7 @@ export function AppShell({
           <button className="rounded-lg bg-white/15 px-3 py-1.5 text-[12px] font-bold text-white">ログアウト</button>
         </form>
       </header>
-      <main className={noPad ? "flex-1" : "flex-1 p-4 pb-24"}>{children}</main>
+      <main className={noPad ? "flex-1 overflow-x-clip" : "flex-1 overflow-x-clip p-4 pb-24"}>{children}</main>
       {!hideNav && <AppBottomNav />}
     </div>
   );
