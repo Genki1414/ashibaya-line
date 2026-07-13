@@ -1,4 +1,4 @@
-import { CompanyId, DomainError, IsoDate, Result, andThen, createEvent, err, ok } from "../shared";
+import { CompanyId, DomainError, IsoDate, Result, andThen, createEvent, err, money, ok } from "../shared";
 import {
   DepositInput,
   Invoice,
@@ -26,7 +26,7 @@ import {
   requestRework as requestReworkTrack,
   start as startWorkTrack,
 } from "../work";
-import { averagePayDays, canBillPhase, dismantleLocked, isAllOnTime, isTransactionComplete } from "./queries";
+import { activePhaseKeys, averagePayDays, canBillPhase, dismantleLocked, isAllOnTime, isTransactionComplete, phaseLabel } from "./queries";
 import { Actor, Issue, Phase, PhaseKey, PhaseSchedule, Transaction } from "./types";
 import { TransactionEvent } from "./events";
 
@@ -341,6 +341,59 @@ export function acknowledgeSchedule(tx: Transaction, actor: Actor, at: IsoDate):
   if (!tx.scheduleNotice) return err(new DomainError("NO_SCHEDULE_NOTICE", "確認すべき工期・予定変更はありません"));
   const transaction: Transaction = { ...tx, scheduleNotice: { ...tx.scheduleNotice, acknowledged: true } };
   const event = createEvent("ScheduleAcknowledged", at, { transactionId: tx.id });
+  return ok({ transaction, events: [event] });
+}
+
+/* ============================ 案件情報の変更（現場・金額） ============================ */
+
+export interface TransactionInfoInput {
+  readonly region?: string;
+  readonly address?: string;
+  /** 各フェーズの金額（円）。応援は assembly のみ有効。請求開始後のフェーズは変更不可。 */
+  readonly assemblyAmount?: number;
+  readonly dismantleAmount?: number;
+}
+
+const yen = (n: number | null) => (n == null ? "-" : "¥" + n.toLocaleString());
+
+/** 元請による案件情報（現場・金額）の変更。金額は未請求フェーズのみ変更できる。 */
+export function updateTransactionInfo(tx: Transaction, actor: Actor, input: TransactionInfoInput, at: IsoDate): Result<CommandResult> {
+  const guard = requireActor(actor, "prime", "案件情報の変更");
+  if (!guard.ok) return guard;
+
+  const changes: { field: string; from: string; to: string }[] = [];
+  let transaction = tx;
+
+  if (input.region !== undefined && input.region !== tx.region) {
+    changes.push({ field: "現場（地域）", from: tx.region || "-", to: input.region || "-" });
+    transaction = { ...transaction, region: input.region };
+  }
+  if (input.address !== undefined && input.address !== tx.address) {
+    changes.push({ field: "現場住所", from: tx.address || "-", to: input.address || "-" });
+    transaction = { ...transaction, address: input.address };
+  }
+
+  const amountInputs: { phase: PhaseKey; value: number | undefined }[] = [
+    { phase: "assembly", value: input.assemblyAmount },
+    { phase: "dismantle", value: input.dismantleAmount },
+  ];
+  for (const { phase, value } of amountInputs) {
+    if (value === undefined) continue;
+    if (!activePhaseKeys(tx).includes(phase)) continue;
+    const current = tx.phases[phase].amount;
+    if (current != null && value === current) continue;
+    if (tx.phases[phase].bill.status !== "none") {
+      return err(new DomainError("PHASE_ALREADY_BILLED", "請求が始まっているフェーズの金額は変更できません"));
+    }
+    const m = money(value);
+    if (!m.ok) return m;
+    const label = phaseLabel(tx, phase) ? `${phaseLabel(tx, phase)}金額` : "金額";
+    changes.push({ field: label, from: yen(current), to: yen(m.value) });
+    transaction = withPhase(transaction, phase, { amount: m.value });
+  }
+
+  if (changes.length === 0) return ok({ transaction: tx, events: [] });
+  const event = createEvent("TransactionInfoUpdated", at, { transactionId: tx.id, changes });
   return ok({ transaction, events: [event] });
 }
 

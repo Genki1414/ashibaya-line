@@ -24,6 +24,8 @@ import {
   startTransaction,
   startWork,
   submitInvoice,
+  updateTransactionInfo,
+  type TransactionInfoInput,
 } from "../domain/transaction";
 import { DailySessionInput, StartWorkInput, WorkReport } from "../domain/work";
 import { InvoiceInput, PaymentInput, DepositInput } from "../domain/billing";
@@ -144,6 +146,10 @@ export class TransactionService {
 
   changeSchedule(companyId: CompanyId, txId: TransactionId, input: ScheduleChangeInput) {
     return this.run(companyId, txId, (tx, role, at) => changeSchedule(tx, role, input, at));
+  }
+
+  updateTransactionInfo(companyId: CompanyId, txId: TransactionId, input: TransactionInfoInput) {
+    return this.run(companyId, txId, (tx, role, at) => updateTransactionInfo(tx, role, input, at));
   }
 
   acknowledgeSchedule(companyId: CompanyId, txId: TransactionId) {

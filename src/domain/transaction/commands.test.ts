@@ -184,6 +184,29 @@ describe("Transaction single-phase engine (support / 応援)", () => {
   });
 });
 
+describe("案件情報の変更（元請）", () => {
+  it("元請は現場・未請求フェーズの金額を変更できる（協力会社は不可）", () => {
+    let tx = unwrap(cmd.startTransaction(progressTx(), "partner", "2026-07-08", true)).transaction;
+    expect(cmd.updateTransactionInfo(tx, "partner", { region: "x" }, "2026-07-08").ok).toBe(false);
+
+    const r = unwrap(cmd.updateTransactionInfo(tx, "prime", { region: "宮城県 石巻市", address: "石巻市中央", assemblyAmount: 250000 }, "2026-07-08"));
+    tx = r.transaction;
+    expect(tx.region).toBe("宮城県 石巻市");
+    expect(tx.address).toBe("石巻市中央");
+    expect(tx.phases.assembly.amount).toBe(250000);
+    expect(r.events.some((e) => e.name === "TransactionInfoUpdated")).toBe(true);
+  });
+
+  it("請求が始まったフェーズの金額は変更できない", () => {
+    let tx = unwrap(cmd.startTransaction(progressTx(), "partner", "2026-07-08", true)).transaction;
+    tx = unwrap(cmd.startWork(tx, "assembly", "partner", { date: "2026-07-08", people: 2 }, "2026-07-08")).transaction;
+    tx = unwrap(cmd.reportWorkCompletion(tx, "assembly", "partner", { date: "2026-07-09", days: 2, people: 2, content: "組立完了", photoCount: 2 }, "2026-07-09")).transaction;
+    tx = unwrap(cmd.confirmWork(tx, "assembly", "prime", "2026-07-09")).transaction;
+    tx = unwrap(cmd.submitInvoice(tx, "assembly", "partner", { amount: 220000, issuedAt: "2026-07-09", dueDate: "2026-08-31", bankAccount: "行" }, "2026-07-09")).transaction;
+    expect(cmd.updateTransactionInfo(tx, "prime", { assemblyAmount: 250000 }, "2026-07-10").ok).toBe(false);
+  });
+});
+
 describe("Transaction two-phase engine (lump)", () => {
   it("never bills the assembly phase and completes on the dismantle deposit alone", () => {
     let tx = lumpTx();

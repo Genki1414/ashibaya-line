@@ -122,6 +122,19 @@ export async function runTransactionAction(input: TransactionActionInput): Promi
       result = await svc.changeSchedule(company, txId, input);
       break;
     }
+    case "updateTransactionInfo": {
+      const amount = (k: string): number | undefined => {
+        const raw = str(p, k);
+        return raw === "" ? undefined : Number(raw.replace(/[^\d]/g, ""));
+      };
+      result = await svc.updateTransactionInfo(company, txId, {
+        region: p && "region" in p ? str(p, "region") : undefined,
+        address: p && "address" in p ? str(p, "address") : undefined,
+        assemblyAmount: amount("assemblyAmount"),
+        dismantleAmount: amount("dismantleAmount"),
+      });
+      break;
+    }
     case "linkAshiBase":
       result = await svc.linkAshiBase(company, txId);
       break;
