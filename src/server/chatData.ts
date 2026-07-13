@@ -24,6 +24,82 @@ export function chatAvailable(): boolean {
   return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 }
 
+export interface ChatUnread {
+  chatKey: string;
+  projectId: string;
+  partnerCompanyId: string;
+  projectName: string;
+  counterpartyName: string;
+  count: number;
+  lastText: string;
+}
+
+interface ChatRow {
+  key: string;
+  project_id: string | null;
+  prime_id: string;
+  partner_id: string;
+  title: string;
+}
+interface MsgRow {
+  chat_key: string;
+  sender_role: Actor;
+  text: string;
+  created_at: string;
+}
+
+/** 現在の会社の未読チャット（自分以外の送信で、最後に読んだ時刻より新しいもの）。 */
+export async function loadUnreadChats(): Promise<ChatUnread[]> {
+  if (!chatAvailable()) return [];
+  const me = await currentCompanyId();
+  if (!me) return [];
+
+  const supabase = await getDb();
+  const { data: chatData, error: chatErr } = await supabase
+    .from("chats")
+    .select("key, project_id, prime_id, partner_id, title")
+    .or(`prime_id.eq.${me},partner_id.eq.${me}`);
+  if (chatErr) return [];
+  const chats = (chatData ?? []) as ChatRow[];
+  if (chats.length === 0) return [];
+
+  const keys = chats.map((c) => c.key);
+  const [reads, msgs, companies] = await Promise.all([
+    supabase.from("chat_reads").select("chat_key, last_read_at").eq("company_id", me).in("chat_key", keys),
+    supabase.from("messages").select("chat_key, sender_role, text, created_at").in("chat_key", keys).order("created_at", { ascending: true }),
+    supabase.from("companies").select("id, name"),
+  ]);
+  // chat_reads 未マイグレーション時などは既読不明として空扱い（未読バッジを出さない）。
+  if (reads.error || msgs.error) return [];
+  const { data: readData } = reads;
+  const { data: msgData } = msgs;
+  const { data: companyData } = companies;
+
+  const lastRead = new Map((readData ?? []).map((r) => [(r as { chat_key: string }).chat_key, (r as { last_read_at: string }).last_read_at]));
+  const nameById = new Map((companyData ?? []).map((c) => [(c as { id: string }).id, (c as { name: string }).name]));
+  const messages = (msgData ?? []) as MsgRow[];
+
+  const result: ChatUnread[] = [];
+  for (const chat of chats) {
+    const myRole: Actor = chat.prime_id === me ? "prime" : "partner";
+    const partnerCompanyId = myRole === "prime" ? chat.partner_id : chat.prime_id;
+    const readAt = lastRead.get(chat.key);
+    const mine = messages.filter((m) => m.chat_key === chat.key && m.sender_role !== myRole);
+    const unread = mine.filter((m) => !readAt || m.created_at > readAt);
+    if (unread.length === 0) continue;
+    result.push({
+      chatKey: chat.key,
+      projectId: chat.project_id ?? chat.key.split(":")[0],
+      partnerCompanyId,
+      projectName: chat.title,
+      counterpartyName: nameById.get(partnerCompanyId) ?? partnerCompanyId,
+      count: unread.length,
+      lastText: unread[unread.length - 1]?.text ?? "",
+    });
+  }
+  return result;
+}
+
 /**
  * 案件×依頼先(会社)のチャットを解決する。閲覧できるのは元請本人か、その依頼先会社本人のみ。
  * 依頼先は応募済み（＝チャットが作られる対象）であることを要件とする。

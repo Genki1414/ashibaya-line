@@ -14,6 +14,7 @@ import {
   type MetricsView,
 } from "@/components/company/parts";
 import { loadProjectDetail } from "@/server/projectData";
+import { loadUnreadChats } from "@/server/chatData";
 import { currentCompanyId } from "@/server/acting";
 import { companyCreditLevel, companyFactsOf, type Company } from "@/domain/company";
 import { continuousCount } from "@/domain/credit";
@@ -58,6 +59,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
   const today = new Date().toISOString().slice(0, 10);
   const primeFacts = prime ? companyFactsOf(prime, false, today) : null;
+
+  const unreadByChatKey = new Map((await loadUnreadChats()).map((c) => [c.chatKey, c.count]));
+  const unreadFor = (companyId: string) => unreadByChatKey.get(`${project.id as unknown as string}:${companyId}`) ?? 0;
 
   return (
     <AppShell title={project.name} back="/projects">
@@ -170,9 +174,12 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                     <div className="mt-3 flex items-center gap-2">
                       <Link
                         href={`/projects/${project.id as unknown as string}/chat/${a.id}`}
-                        className="rounded-xl border border-(--color-brand-blue) px-3 py-2 text-[13px] font-bold text-(--color-brand-blue)"
+                        className="flex items-center gap-1.5 rounded-xl border border-(--color-brand-blue) px-3 py-2 text-[13px] font-bold text-(--color-brand-blue)"
                       >
                         チャット
+                        {unreadFor(a.id) > 0 && (
+                          <span className="rounded-full bg-(--color-brand-red) px-1.5 py-0.5 text-[10.5px] font-bold text-white">{unreadFor(a.id)}</span>
+                        )}
                       </Link>
                       {recruiting && <SelectButton projectId={project.id as unknown as string} partnerId={a.id} />}
                     </div>
@@ -204,9 +211,12 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             {alreadyApplied && (
               <Link
                 href={`/projects/${project.id as unknown as string}/chat/${myCompanyId}`}
-                className="block rounded-xl border border-(--color-brand-blue) py-2.5 text-center text-[13.5px] font-bold text-(--color-brand-blue)"
+                className="flex items-center justify-center gap-1.5 rounded-xl border border-(--color-brand-blue) py-2.5 text-center text-[13.5px] font-bold text-(--color-brand-blue)"
               >
                 元請とチャットする
+                {unreadFor(myCompanyId) > 0 && (
+                  <span className="rounded-full bg-(--color-brand-red) px-1.5 py-0.5 text-[10.5px] font-bold text-white">{unreadFor(myCompanyId)}</span>
+                )}
               </Link>
             )}
           </div>

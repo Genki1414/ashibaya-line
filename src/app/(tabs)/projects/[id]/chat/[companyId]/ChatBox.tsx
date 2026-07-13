@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { ChatMessage } from "@/server/chatData";
-import { sendMessageAction } from "./actions";
+import { sendMessageAction, markChatReadAction } from "./actions";
 
 type Actor = "prime" | "partner";
 
@@ -32,6 +32,11 @@ export function ChatBox({
   const [text, setText] = useState("");
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+
+  // 開いた時点で既読にする（他画面の未読バッジをクリア）。
+  useEffect(() => {
+    void markChatReadAction(projectId, partnerCompanyId);
+  }, [projectId, partnerCompanyId, messages.length]);
 
   const submit = () => {
     const body = text.trim();

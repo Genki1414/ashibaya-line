@@ -5,6 +5,7 @@ const KIND_META: Record<NotificationKind, { color: string; bg: string }> = {
   応募: { color: "#C77700", bg: "#FCF2DF" },
   選定: { color: "#1657C9", bg: "#E8F0FE" },
   受注: { color: "#159B67", bg: "#E4F6EE" },
+  チャット: { color: "#6D4AC4", bg: "#EEE9FA" },
 };
 
 /** ホーム・案件タブに置く通知欄（サーバーコンポーネント）。空のときは控えめな表示。 */
