@@ -24,6 +24,7 @@ export function AppBottomNav() {
           <Link
             key={t.href}
             href={t.href}
+            prefetch
             className="flex min-w-0 flex-1 flex-col items-center gap-0.5"
             style={{ color: active ? "var(--color-brand-blue)" : "var(--color-brand-faint)" }}
           >
