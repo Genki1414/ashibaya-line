@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -18,6 +18,14 @@ export const metadata: Metadata = {
     template: "%s ｜ 足場信用プラットフォーム",
   },
   description: "足場会社向け 信用プラットフォーム",
+};
+
+// スマホ画面に自動フィット（幅＝端末幅、初期倍率1、ノッチ対応）。
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#1657c9",
 };
 
 export default function RootLayout({
