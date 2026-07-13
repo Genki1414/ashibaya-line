@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Transaction, AvailableAction, Actor, PhaseKey } from "@/domain/transaction";
@@ -236,10 +237,21 @@ export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, ne
         <Row label="金額" value={`${yen((tx.phases.assembly.amount ?? 0) + (tx.phases.dismantle.amount ?? 0))}（${tx.payType === "progress" ? "出来高" : "一括"}）`} />
         <Row label="支払条件" value={`${tx.closing}締め / ${tx.payTerm}払い`} />
         <Row label="売掛保証" value={tx.startedAt ? (tx.guaranteed ? "適用（受注側が選択）" : "なし") : "受注時に受注側が選択"} />
-        <div className="mt-2">
+        <div className="mt-2 flex items-center gap-2">
           <SmallButton disabled={pending || tx.ashibase.linked} onClick={() => dispatch({ txId: tx.id, key: "linkAshiBase" })}>
             {tx.ashibase.linked ? "AshiBase連携済み" : "AshiBaseへ連携"}
           </SmallButton>
+          {(() => {
+            const [projectId, partnerId] = tx.chatKey.split(":");
+            return (
+              <Link
+                href={`/projects/${projectId}/chat/${partnerId}`}
+                className="rounded-lg border border-(--color-brand-blue) px-3 py-1.5 text-[12.5px] font-bold text-(--color-brand-blue)"
+              >
+                チャットを開く
+              </Link>
+            );
+          })()}
         </div>
       </Section>
 

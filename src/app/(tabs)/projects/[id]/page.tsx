@@ -161,11 +161,15 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                       </div>
                       <LevelBadge level={companyCreditLevel(a, true)} />
                     </div>
-                    {recruiting && (
-                      <div className="mt-3 flex">
-                        <SelectButton projectId={project.id as unknown as string} partnerId={a.id} />
-                      </div>
-                    )}
+                    <div className="mt-3 flex items-center gap-2">
+                      <Link
+                        href={`/projects/${project.id as unknown as string}/chat/${a.id}`}
+                        className="rounded-xl border border-(--color-brand-blue) px-3 py-2 text-[13px] font-bold text-(--color-brand-blue)"
+                      >
+                        チャット
+                      </Link>
+                      {recruiting && <SelectButton projectId={project.id as unknown as string} partnerId={a.id} />}
+                    </div>
                   </Card>
                 ))}
               </div>
@@ -175,7 +179,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
         {/* 応募アクション／状態（非元請の会社向け。自分の応募状態のみ表示） */}
         {!isPrime && myCompanyId && (
-          <div className="pt-1">
+          <div className="space-y-2 pt-1">
             {alreadyApplied && recruiting ? (
               <div className="rounded-xl bg-(--color-brand-blue-soft) px-3 py-3 text-center text-[13.5px] font-bold text-(--color-brand-blue)">
                 応募中です。元請の選定をお待ちください。
@@ -190,6 +194,14 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               </div>
             ) : (
               <ApplyButton projectId={project.id as unknown as string} disabled={!canApply} />
+            )}
+            {alreadyApplied && (
+              <Link
+                href={`/projects/${project.id as unknown as string}/chat/${myCompanyId}`}
+                className="block rounded-xl border border-(--color-brand-blue) py-2.5 text-center text-[13.5px] font-bold text-(--color-brand-blue)"
+              >
+                元請とチャットする
+              </Link>
             )}
           </div>
         )}
