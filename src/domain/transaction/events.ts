@@ -1,5 +1,5 @@
 import { CompanyId, DomainEvent, IsoDate, Money, TransactionId } from "../shared";
-import { PhaseKey, ScheduleChange } from "./types";
+import { InfoChange, PhaseKey, ScheduleChange } from "./types";
 
 interface Base {
   readonly transactionId: TransactionId;
@@ -24,6 +24,7 @@ export type IssueResolvedPayload = Base;
 export type ConsultationRequestedPayload = Base & { readonly requestedBy: CompanyId; readonly text: string };
 export type ScheduleChangedPayload = Base & { readonly changes: readonly ScheduleChange[] };
 export type ScheduleAcknowledgedPayload = Base;
+export type TransactionInfoUpdatedPayload = Base & { readonly changes: readonly InfoChange[] };
 export type AshiBaseLinkedPayload = Base;
 export type TransactionCompletedPayload = Base & {
   readonly primeId: CompanyId;
@@ -52,5 +53,6 @@ export type TransactionEvent =
   | DomainEvent<"ConsultationRequested", ConsultationRequestedPayload>
   | DomainEvent<"ScheduleChanged", ScheduleChangedPayload>
   | DomainEvent<"ScheduleAcknowledged", ScheduleAcknowledgedPayload>
+  | DomainEvent<"TransactionInfoUpdated", TransactionInfoUpdatedPayload>
   | DomainEvent<"AshiBaseLinked", AshiBaseLinkedPayload>
   | DomainEvent<"TransactionCompleted", TransactionCompletedPayload>;

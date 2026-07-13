@@ -62,6 +62,11 @@ export function describeEvent(event: StoredEvent): TimelineEntry {
       return { ...base, label: "運営へ相談", detail: typeof p.text === "string" ? p.text : null, kind: "normal" };
     case "ScheduleChanged":
       return { ...base, label: "工期・予定を変更", detail: null, kind: "normal" };
+    case "TransactionInfoUpdated": {
+      const changes = Array.isArray(p.changes) ? (p.changes as { field?: string }[]) : [];
+      const fields = changes.map((c) => c.field).filter(Boolean).join("・");
+      return { ...base, label: "案件情報を変更", detail: fields || null, kind: "normal" };
+    }
     case "ScheduleAcknowledged":
       return { ...base, label: "工期・予定変更を確認", detail: null, kind: "normal" };
     case "AshiBaseLinked":

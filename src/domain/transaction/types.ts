@@ -44,6 +44,13 @@ export interface ScheduleChange {
   readonly to: IsoDate | null;
 }
 
+/** 案件情報（現場・金額など）の変更差分。表示用に from/to を文字列で保持する。 */
+export interface InfoChange {
+  readonly field: string;
+  readonly from: string;
+  readonly to: string;
+}
+
 export interface ScheduleNotice {
   readonly changes: readonly ScheduleChange[];
   readonly notifiedAt: IsoDate;

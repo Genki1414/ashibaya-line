@@ -103,6 +103,7 @@ export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, ne
   const [confirmChoice, setConfirmChoice] = useState<AvailableAction | null>(null);
   const [acceptChoice, setAcceptChoice] = useState<AvailableAction | null>(null);
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
 
   const showToast = (ok: boolean, message: string) => {
     setToast({ ok, message });
@@ -249,9 +250,22 @@ export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, ne
         <Row label="現場" value={`${tx.region} ${tx.address}`} />
         <Row label="元請" value={`${prime.name}（${LEVEL_JP[prime.level] ?? prime.level}）`} />
         <Row label="協力会社" value={`${partner.name}（${LEVEL_JP[partner.level] ?? partner.level}）`} />
-        <Row label="金額" value={`${yen((tx.phases.assembly.amount ?? 0) + (tx.phases.dismantle.amount ?? 0))}（${tx.payType === "progress" ? "出来高" : "一括"}）`} />
-        <Row label="支払条件" value={`${tx.closing}締め / ${tx.payTerm}払い`} />
+        {activePhaseKeys(tx).map((phase) => (
+          <Row
+            key={phase}
+            label={phaseLabel(tx, phase) ? `${phaseLabel(tx, phase)}金額` : "金額"}
+            value={`${yen(tx.phases[phase].amount)}${tx.phases[phase].bill.status !== "none" ? "（請求開始済み）" : ""}`}
+          />
+        ))}
+        <Row label="支払条件" value={`${tx.closing}締め / ${tx.payTerm}払い（${tx.payType === "progress" ? "出来高" : "一括"}）`} />
         <Row label="売掛保証" value={tx.startedAt ? (tx.guaranteed ? "適用（受注側が選択）" : "なし") : "受注時に受注側が選択"} />
+        {role === "prime" && tx.status !== "completed" && (
+          <div className="mt-2">
+            <SmallButton disabled={pending} onClick={() => setInfoOpen(true)}>
+              現場・金額を変更する
+            </SmallButton>
+          </div>
+        )}
         <div className="mt-2 flex items-center gap-2">
           <SmallButton disabled={pending || tx.ashibase.linked} onClick={() => dispatch({ txId: tx.id, key: "linkAshiBase" })}>
             {tx.ashibase.linked ? "AshiBase連携済み" : "AshiBaseへ連携"}
@@ -326,6 +340,35 @@ export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, ne
               onSubmit={(payload) => {
                 dispatch({ txId: tx.id, key: "changeSchedule", payload });
                 setScheduleOpen(false);
+              }}
+            />
+          );
+        })()}
+
+      {/* 案件情報（現場・金額）の変更（元請）。金額は未請求フェーズのみ編集可。 */}
+      {infoOpen &&
+        (() => {
+          const editablePhases = activePhaseKeys(tx).filter((phase) => tx.phases[phase].bill.status === "none");
+          const fields: Field[] = [
+            { name: "region", label: "現場（地域）", type: "text" },
+            { name: "address", label: "現場住所", type: "text" },
+            ...editablePhases.map((phase): Field => ({ name: `${phase}Amount`, label: `${phaseLabel(tx, phase) || ""}金額（円）`, type: "number" })),
+          ];
+          const defaults: Record<string, string> = {
+            region: tx.region ?? "",
+            address: tx.address ?? "",
+            ...Object.fromEntries(editablePhases.map((phase) => [`${phase}Amount`, tx.phases[phase].amount != null ? String(tx.phases[phase].amount) : ""])),
+          };
+          return (
+            <FormModal
+              title="現場・金額を変更"
+              fields={fields}
+              defaults={defaults}
+              pending={pending}
+              onClose={() => setInfoOpen(false)}
+              onSubmit={(payload) => {
+                dispatch({ txId: tx.id, key: "updateTransactionInfo", payload });
+                setInfoOpen(false);
               }}
             />
           );

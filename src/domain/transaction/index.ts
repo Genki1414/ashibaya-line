@@ -13,6 +13,7 @@ export type {
   Issue,
   Consultation,
   ScheduleChange,
+  InfoChange,
   ScheduleNotice,
   AshiBaseLink,
   TransactionStatus,
@@ -67,6 +68,7 @@ export {
   requestConsultation,
   changeSchedule,
   acknowledgeSchedule,
+  updateTransactionInfo,
   linkAshiBase,
 } from "./commands";
-export type { CommandResult, ScheduleChangeInput } from "./commands";
+export type { CommandResult, ScheduleChangeInput, TransactionInfoInput } from "./commands";
