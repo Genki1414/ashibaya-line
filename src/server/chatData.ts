@@ -1,13 +1,25 @@
 import { currentCompanyId, getDb } from "./acting";
 import { createAdminClient } from "../lib/supabase/admin";
 import { rowToProject, type ProjectRow } from "../infra/supabase/mappers";
+import { CHAT_BUCKET } from "../lib/chatBucket";
 import type { Actor } from "../domain/transaction";
+
+export { CHAT_BUCKET };
+
+export interface ChatAttachment {
+  url: string;
+  name: string;
+  type: string;
+  size: number;
+  isImage: boolean;
+}
 
 export interface ChatMessage {
   id: string;
   senderRole: Actor;
   text: string;
   createdAt: string;
+  attachment: ChatAttachment | null;
 }
 
 export interface ChatView {
@@ -25,6 +37,15 @@ export interface ChatView {
 /** チャットは Supabase 接続時のみ（デモ/インメモリでは無効）。 */
 export function chatAvailable(): boolean {
   return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+}
+
+/** service_role クライアント（未設定なら null）。既読・添付URL発行など RLS をまたぐ読み取りに使う。 */
+function adminOrNull() {
+  try {
+    return createAdminClient();
+  } catch {
+    return null;
+  }
 }
 
 export interface ChatUnread {
@@ -126,19 +147,44 @@ export async function loadChat(projectId: string, partnerCompanyId: string): Pro
 
   const chatKey = `${projectId}:${partnerCompanyId}`;
   const counterpartyId = role === "prime" ? partnerCompanyId : primeId;
-  const [{ data: msgs }, { data: cRow }] = await Promise.all([
-    supabase.from("messages").select("id, sender_role, text, created_at").eq("chat_key", chatKey).order("created_at", { ascending: true }),
-    supabase.from("companies").select("name").eq("id", counterpartyId).maybeSingle(),
-  ]);
+  const full = await supabase
+    .from("messages")
+    .select("id, sender_role, text, created_at, attachment_path, attachment_name, attachment_type, attachment_size")
+    .eq("chat_key", chatKey)
+    .order("created_at", { ascending: true });
+  // 0006 未適用（添付カラム無し）でもチャットが壊れないよう、基本カラムにフォールバック。
+  const msgResult = full.error
+    ? await supabase.from("messages").select("id, sender_role, text, created_at").eq("chat_key", chatKey).order("created_at", { ascending: true })
+    : full;
+  const rows = (msgResult.data ?? []) as unknown as Array<{
+    id: string;
+    sender_role: Actor;
+    text: string;
+    created_at: string;
+    attachment_path?: string | null;
+    attachment_name?: string | null;
+    attachment_type?: string | null;
+    attachment_size?: number | null;
+  }>;
+  const { data: cRow } = await supabase.from("companies").select("name").eq("id", counterpartyId).maybeSingle();
+
+  // 添付の署名付きURL（非公開バケット）を service_role でまとめて発行する。
+  const admin = adminOrNull();
+  const attachmentUrl = new Map<string, string>();
+  const paths = rows.map((m) => m.attachment_path).filter((p): p is string => Boolean(p));
+  if (admin && paths.length > 0) {
+    const { data: signed } = await admin.storage.from(CHAT_BUCKET).createSignedUrls(paths, 60 * 60);
+    for (const s of signed ?? []) {
+      const srow = s as { path?: string | null; signedUrl?: string };
+      if (srow.path && srow.signedUrl) attachmentUrl.set(srow.path, srow.signedUrl);
+    }
+  }
 
   // 相手の既読時刻は「相手の会社」の chat_reads。RLS（自社のみ可）をまたぐため service_role で読む。
   let counterpartyReadAt: string | null = null;
-  try {
-    const admin = createAdminClient();
+  if (admin) {
     const { data: cr } = await admin.from("chat_reads").select("last_read_at").eq("chat_key", chatKey).eq("company_id", counterpartyId).maybeSingle();
     counterpartyReadAt = (cr as { last_read_at?: string } | null)?.last_read_at ?? null;
-  } catch {
-    // service_role 未設定・テーブル未作成などは既読表示なしにフォールバック
   }
 
   return {
@@ -148,9 +194,19 @@ export async function loadChat(projectId: string, partnerCompanyId: string): Pro
     projectName: project.name,
     role,
     counterpartyName: (cRow as { name?: string } | null)?.name ?? counterpartyId,
-    messages: (msgs ?? []).map((m) => {
-      const r = m as { id: string; sender_role: Actor; text: string; created_at: string };
-      return { id: r.id, senderRole: r.sender_role, text: r.text, createdAt: r.created_at };
+    messages: rows.map((r) => {
+      const url = r.attachment_path ? attachmentUrl.get(r.attachment_path) : undefined;
+      const attachment: ChatAttachment | null =
+        r.attachment_path && url
+          ? {
+              url,
+              name: r.attachment_name ?? "ファイル",
+              type: r.attachment_type ?? "",
+              size: r.attachment_size ?? 0,
+              isImage: (r.attachment_type ?? "").startsWith("image/"),
+            }
+          : null;
+      return { id: r.id, senderRole: r.sender_role, text: r.text, createdAt: r.created_at, attachment };
     }),
     counterpartyReadAt,
   };
