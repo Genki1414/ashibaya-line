@@ -333,6 +333,9 @@ export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, ne
         </Section>
       )}
 
+      {/* 帳票（取引記録から自動生成。ブラウザ印刷でPDF化） */}
+      <DocLinksSection tx={tx} />
+
       {/* 案件チャット（応募〜取引で同一チャットを継続） */}
       <div id="tx-chat" className="scroll-mt-16" />
       <Section title="案件チャット" defaultOpen>
@@ -566,6 +569,51 @@ function PhasePanel({
           </SmallButton>
         </div>
       )}
+    </Section>
+  );
+}
+
+/** 帳票リンク（別タブで開いて印刷/PDF保存）。取引記録の状態に応じて発行可否を出し分ける。 */
+function DocLinksSection({ tx }: { tx: Transaction }) {
+  const hasInvoice = activePhaseKeys(tx).some((k) => tx.phases[k].bill.invoice != null);
+  const completed = tx.status === "completed";
+  const items: { doc: string; label: string; desc: string; ready: boolean; note: string }[] = [
+    { doc: "invoice", label: "請求書", desc: "協力会社の請求内容から作成", ready: hasInvoice, note: "請求書の提出後に発行できます" },
+    { doc: "statement", label: "取引明細書", desc: "案件・工期・作業と請求の状況", ready: true, note: "" },
+    { doc: "certificate", label: "取引完了証明書", desc: "入金確認まで完了した取引の証明", ready: completed, note: "取引の完了後に発行できます" },
+  ];
+  return (
+    <Section title="帳票（請求書・明細・証明書）">
+      <div className="mb-2 text-[12px] text-(--color-brand-sub)">取引記録から自動作成します。別タブで開き、ブラウザの「PDFに保存」で保存・印刷できます。</div>
+      <div className="flex flex-col gap-2">
+        {items.map((it) =>
+          it.ready ? (
+            <Link
+              key={it.doc}
+              href={`/print/tx/${tx.id}/${it.doc}`}
+              target="_blank"
+              rel="noopener"
+              className="flex items-center gap-3 rounded-xl border border-(--color-brand-line) bg-white px-3.5 py-3"
+            >
+              <span className="text-[18px]" aria-hidden>📄</span>
+              <div className="flex-1">
+                <div className="text-[13.5px] font-bold text-(--color-brand-ink)">{it.label}</div>
+                <div className="text-[11.5px] text-(--color-brand-sub)">{it.desc}</div>
+              </div>
+              <span className="text-[12.5px] font-bold text-(--color-brand-blue)">開く ›</span>
+            </Link>
+          ) : (
+            <div key={it.doc} className="flex items-center gap-3 rounded-xl border border-dashed border-(--color-brand-line) bg-(--color-brand-bg) px-3.5 py-3 opacity-70">
+              <span className="text-[18px] grayscale" aria-hidden>📄</span>
+              <div className="flex-1">
+                <div className="text-[13.5px] font-bold text-(--color-brand-sub)">{it.label}</div>
+                <div className="text-[11.5px] text-(--color-brand-faint)">{it.note}</div>
+              </div>
+              <span className="text-[11.5px] font-semibold text-(--color-brand-faint)">未発行</span>
+            </div>
+          ),
+        )}
+      </div>
     </Section>
   );
 }
