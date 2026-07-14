@@ -111,7 +111,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           </div>
         )}
         {/* 案件資料（公開範囲に応じて表示。管理は元請のみ） */}
-        <div>
+        <div id="docs" className="scroll-mt-16">
           <SectionLabel
             text="案件資料"
             right={canManageDocs ? (

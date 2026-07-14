@@ -326,6 +326,7 @@ export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, ne
       </Section>
 
       {/* 案件資料（成立時点のスナップショット＋成立後の追加。証拠保全のため削除されても履歴は残る） */}
+      <div id="tx-docs" className="scroll-mt-16" />
       {documentsSlot && (
         <Section title="案件資料" defaultOpen>
           {documentsSlot}
