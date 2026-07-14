@@ -28,7 +28,10 @@ function parseProjectForm(fd: FormData):
   const start = s(fd, "start");
   const end = s(fd, "end");
   const priceRaw = s(fd, "unitPrice");
+  const prefecture = s(fd, "prefecture");
+  const city = s(fd, "city");
   if (!name) return { ok: false, error: "案件名を入力してください" };
+  if (!prefecture) return { ok: false, error: "都道府県を選択してください" };
   if (!start || !end) return { ok: false, error: "工期（開始・終了）を入力してください" };
   if (!priceRaw) return { ok: false, error: "金額を入力してください" };
 
@@ -41,7 +44,8 @@ function parseProjectForm(fd: FormData):
     command: {
       name,
       jobType: (s(fd, "jobType") || "support") as JobType,
-      region: s(fd, "region"),
+      prefecture,
+      city,
       address: s(fd, "address") || "（後日連絡）",
       overallSchedule: { plannedStart: start, plannedEnd: end },
       assemblySchedule: { plannedStart: assemblyStart, plannedEnd: s(fd, "assemblyEnd") || assemblyStart },

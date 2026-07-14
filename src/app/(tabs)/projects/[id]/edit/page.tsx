@@ -22,7 +22,8 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
   const defaults: Partial<JobFormState> = {
     name: project.name,
     jobType: project.jobType,
-    region: project.region,
+    prefecture: project.prefecture,
+    city: project.city,
     address: project.address,
     start: project.overallSchedule.plannedStart ?? "",
     end: project.overallSchedule.plannedEnd ?? "",

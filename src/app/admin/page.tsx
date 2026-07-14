@@ -41,6 +41,10 @@ export default async function AdminPage() {
   const { data: companyRows } = await supabase.from("companies").select("*").order("created_at", { ascending: true });
   const companies = (companyRows ?? []).map((r) => rowToCompany(r as unknown as CompanyRow));
 
+  // 地域が自動分割できなかった案件（prefecture 未設定）＝要修正として確認する。
+  const { data: unsplitRows } = await supabase.from("projects").select("id, name, region").is("prefecture", null);
+  const unsplit = (unsplitRows ?? []) as { id: string; name: string; region: string | null }[];
+
   // 実績プロジェクション（元請/協力の取引完了件数などを一覧確認用に読む）。
   const { data: perfRows } = await supabase.from("company_performance").select("company_id, as_prime, as_partner");
   const perfById = new Map(
@@ -108,6 +112,20 @@ export default async function AdminPage() {
       <AdminForms companies={views.map((v) => ({ id: v.id, name: v.name }))} />
 
       <RecomputeButton />
+
+      {unsplit.length > 0 && (
+        <div className="mt-6 rounded-xl border border-(--color-brand-amber) bg-(--color-brand-amber-soft) p-3">
+          <div className="text-[13px] font-bold text-(--color-brand-amber)">地域が未分割の案件（要修正）：{unsplit.length}件</div>
+          <div className="mt-1 text-[11.5px] text-(--color-brand-sub)">
+            都道府県を自動判定できませんでした。各案件の編集画面で都道府県・市区町村を設定してください。
+          </div>
+          <ul className="mt-2 space-y-1">
+            {unsplit.map((p) => (
+              <li key={p.id} className="text-[12px] text-(--color-brand-ink)">・{p.name}<span className="text-(--color-brand-sub)">（{p.region || "地域未入力"}）</span></li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <h2 className="mb-2 mt-6 text-[13px] font-bold text-(--color-brand-sub)">登録会社（{views.length}）</h2>
       <div className="space-y-2">

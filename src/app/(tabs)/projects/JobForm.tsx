@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { PREFECTURES } from "@/domain/projectSearch";
 import type { ProjectActionResult } from "./actions";
 
 const input = "w-full rounded-lg border border-(--color-brand-line) px-3 py-2 text-[14px]";
@@ -9,7 +10,8 @@ const label = "mb-1 block text-[12.5px] font-bold text-(--color-brand-sub)";
 export interface JobFormState {
   name: string;
   jobType: string;
-  region: string;
+  prefecture: string;
+  city: string;
   address: string;
   start: string;
   end: string;
@@ -30,7 +32,8 @@ export interface JobFormState {
 const EMPTY: JobFormState = {
   name: "",
   jobType: "support",
-  region: "",
+  prefecture: "",
+  city: "",
   address: "",
   start: "",
   end: "",
@@ -74,14 +77,14 @@ export function JobForm({
   const set = <K extends keyof JobFormState>(k: K, v: JobFormState[K]) => setF((p) => ({ ...p, [k]: v }));
 
   const priceLabel = f.jobType === "contract" ? "請負金額（円）" : "単価（日額・円）";
-  const valid = Boolean(f.name && f.region && f.start && f.end && f.price);
+  const valid = Boolean(f.name && f.prefecture && f.start && f.end && f.price);
   const submitLabel = mode === "edit" ? "この内容で更新する" : "案件を公開する（LINEへ通知）";
 
   const summary: [string, string][] = [
     ["案件種別", JOB_LABEL[f.jobType] ?? f.jobType],
     ["案件名", f.name],
-    ["地域", f.region],
-    ["現場住所", f.address || "（後日連絡）"],
+    ["地域", [f.prefecture, f.city].filter(Boolean).join(" ") || "-"],
+    ["詳細住所", f.address || "（後日連絡）"],
     ["工期", `${f.start} 〜 ${f.end}`],
     ["組立予定", `${f.assemblyStart || f.start} 〜 ${f.assemblyEnd || f.assemblyStart || f.start}`],
     ["解体予定", `${f.dismantleStart || f.end} 〜 ${f.dismantleEnd || f.dismantleStart || f.end}`],
@@ -115,10 +118,17 @@ export function JobForm({
 
       <div><label className={label}>案件名 <span className="text-(--color-brand-red)">必須</span></label><input name="name" value={f.name} onChange={(e) => set("name", e.target.value)} placeholder="例）マンション改修 足場（組立・解体）" className={input} /></div>
       <div className="flex gap-2.5">
-        <div className="flex-1"><label className={label}>地域 <span className="text-(--color-brand-red)">必須</span></label><input name="region" value={f.region} onChange={(e) => set("region", e.target.value)} placeholder="宮城県 仙台市" className={input} /></div>
+        <div className="flex-1">
+          <label className={label}>都道府県 <span className="text-(--color-brand-red)">必須</span></label>
+          <select name="prefecture" value={f.prefecture} onChange={(e) => set("prefecture", e.target.value)} className={input}>
+            <option value="">選択してください</option>
+            {PREFECTURES.map((pref) => <option key={pref} value={pref}>{pref}</option>)}
+          </select>
+        </div>
         <div className="w-28"><label className={label}>募集人数</label><input name="need" value={f.need} onChange={(e) => set("need", e.target.value)} type="number" placeholder="任意" className={input} /></div>
       </div>
-      <div><label className={label}>現場住所</label><input name="address" value={f.address} onChange={(e) => set("address", e.target.value)} className={input} /></div>
+      <div><label className={label}>市区町村</label><input name="city" value={f.city} onChange={(e) => set("city", e.target.value)} placeholder="仙台市青葉区" className={input} /></div>
+      <div><label className={label}>詳細住所（町名・番地）</label><input name="address" value={f.address} onChange={(e) => set("address", e.target.value)} placeholder="国分町2-1-1" className={input} /></div>
 
       <div className="flex gap-2.5">
         <div className="flex-1"><label className={label}>工期開始 <span className="text-(--color-brand-red)">必須</span></label><input name="start" value={f.start} onChange={(e) => set("start", e.target.value)} type="date" className={input} /></div>
