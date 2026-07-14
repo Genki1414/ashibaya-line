@@ -8,6 +8,8 @@ import { signOut } from "@/app/(auth)/actions";
 import { AdminForms } from "./AdminForms";
 import { StatusButton } from "./StatusButton";
 import { RecomputeButton } from "./RecomputeButton";
+import { AdminOverviewView } from "./AdminOverviewView";
+import { loadAdminOverview } from "@/server/adminData";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "本部管理" };
@@ -73,6 +75,8 @@ export default async function AdminPage() {
     adminError = e instanceof Error ? e.message : "サービスロール鍵（SUPABASE_SERVICE_ROLE_KEY）が未設定です";
   }
 
+  const overview = await loadAdminOverview();
+
   const views: CompanyView[] = companies.map((c) => ({
     id: c.id,
     name: c.name,
@@ -112,6 +116,8 @@ export default async function AdminPage() {
       <AdminForms companies={views.map((v) => ({ id: v.id, name: v.name }))} />
 
       <RecomputeButton />
+
+      <AdminOverviewView overview={overview} />
 
       {unsplit.length > 0 && (
         <div className="mt-6 rounded-xl border border-(--color-brand-amber) bg-(--color-brand-amber-soft) p-3">
