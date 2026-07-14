@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { getContainer } from "@/server/container";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { canTransact } from "@/domain/company";
-import { applyToProject, withdrawApplication } from "@/domain/project";
+import { applyToProject, withdrawApplication, pauseProject, resumeProject, closeProject } from "@/domain/project";
 import { CompanyId, ProjectId } from "@/domain/shared";
 import { projectToRow, rowToProject, type ProjectRow } from "@/infra/supabase/mappers";
 import type { ClosingDay, JobType, PayTerm, PayType } from "@/domain/transaction";
@@ -139,19 +139,33 @@ export async function withdrawApplicationAction(projectId: string): Promise<Proj
   return { ok: true };
 }
 
-/** 掲載の一時停止／再開／削除（元請本人のみ）。削除は選定済み（取引中）には不可。 */
+/** 掲載の一時停止／再開／削除（元請本人のみ）。削除は選定済み（取引中）には不可。
+ *  案件の書き込みは service_role で行う（元請本人であることをここで検証済み。RLS由来の失敗を避ける）。 */
 export async function setListingStateAction(projectId: string, op: "pause" | "resume" | "close"): Promise<ProjectActionResult> {
   try {
     const container = await getContainer();
-    const result = await container.projectService.setListingState(container.actingCompanyId, ProjectId(projectId), op);
-    if (!result.ok) return { ok: false, error: result.error.message };
+    const me = container.actingCompanyId as unknown as string;
+    const admin = createAdminClient();
+    const { data } = await admin.from("projects").select("state").eq("id", projectId).maybeSingle();
+    if (!data) return { ok: false, error: "案件が見つかりません" };
+    const project = rowToProject(data as unknown as ProjectRow);
+    if ((project.primeId as unknown as string) !== me) return { ok: false, error: "自社が投稿した案件のみ操作できます" };
+
+    const res = op === "pause" ? pauseProject(project) : op === "resume" ? resumeProject(project) : closeProject(project);
+    if (!res.ok) return { ok: false, error: res.error.message };
+
+    const { error } = await admin.from("projects").update({ ...projectToRow(res.value), updated_at: new Date().toISOString() }).eq("id", projectId);
+    if (error) {
+      const detail = `${error.message} ${error.details ?? ""} ${error.code ?? ""}`;
+      if (/stage/i.test(detail)) return { ok: false, error: "案件状態の更新に失敗しました。マイグレーション 0012（stage の制約更新）を適用してください。" };
+      return { ok: false, error: `操作に失敗しました: ${error.message}` };
+    }
     revalidatePath(`/projects/${projectId}`);
     revalidatePath("/projects");
     return { ok: true };
   } catch (e) {
-    // 0012 未適用（stage の check 制約違反）などの想定外エラーも画面を落とさず案内する。
-    const msg = e instanceof Error ? e.message : "操作に失敗しました";
-    return { ok: false, error: /stage/i.test(msg) ? "案件状態の更新に失敗しました（マイグレーション 0012 未適用の可能性）" : `操作に失敗しました: ${msg}` };
+    const msg = e instanceof Error ? e.message : String(e);
+    return { ok: false, error: `操作に失敗しました: ${msg}` };
   }
 }
 
