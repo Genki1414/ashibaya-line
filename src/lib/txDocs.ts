@@ -1,5 +1,5 @@
-import type { Transaction } from "@/domain/transaction";
-import { activePhaseKeys, phaseLabel, billedPhaseKeys } from "@/domain/transaction";
+import type { Transaction } from "../domain/transaction";
+import { activePhaseKeys, phaseLabel } from "../domain/transaction";
 
 /**
  * 帳票（請求書・取引明細書・取引証明書）の表示データを、取引集約から導出する純粋関数群。
@@ -37,9 +37,9 @@ export interface InvoiceDoc {
   readonly total: number;
 }
 
-/** 請求書。請求書が1つ以上提出済みのときだけ生成できる（無ければ null）。 */
+/** 請求書。請求書が1つ以上提出済みのときだけ生成できる（無ければ null）。入金の有無は問わない。 */
 export function buildInvoiceDoc(tx: Transaction, prime: Party, partner: Party): InvoiceDoc | null {
-  const keys = billedPhaseKeys(tx);
+  const keys = activePhaseKeys(tx);
   const withInvoice = keys.filter((k) => tx.phases[k].bill.invoice != null);
   if (withInvoice.length === 0) return null;
 
