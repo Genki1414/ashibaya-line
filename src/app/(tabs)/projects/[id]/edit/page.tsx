@@ -43,6 +43,9 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
 
   return (
     <AppShell title="案件を編集" back={`/projects/${id}`}>
+      <a href={`/projects/${id}/documents`} className="mb-3 flex items-center justify-center gap-1.5 rounded-xl border border-(--color-brand-blue) bg-(--color-brand-blue-soft) py-2.5 text-[13.5px] font-bold text-(--color-brand-blue)">
+        📎 案件資料を管理する
+      </a>
       <JobForm mode="edit" action={updateProjectAction} projectId={id} defaults={defaults} />
     </AppShell>
   );

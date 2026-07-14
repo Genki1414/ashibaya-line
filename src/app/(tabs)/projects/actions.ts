@@ -130,6 +130,16 @@ export async function selectPartnerAction(projectId: string, partnerId: string):
 
   const result = await container.matching.selectPartner(container.actingCompanyId, ProjectId(projectId), CompanyId(partnerId));
   if (!result.ok) return { ok: false, error: result.error.message };
+
+  // 取引成立時点で、選定会社が閲覧可能だった案件資料のスナップショットを保存（証拠保全）。
+  // 案件側の資料が後から削除・変更されても、成立時点の情報が取引側に残る。失敗しても選定自体は成功。
+  try {
+    const { snapshotForTransaction } = await import("@/server/projectDocs");
+    await snapshotForTransaction(projectId, result.data.id, new Date().toISOString().slice(0, 10));
+  } catch {
+    // Supabase未接続・service_role未設定などではスナップショットのみスキップ。
+  }
+
   revalidatePath(`/projects/${projectId}`);
   revalidatePath("/projects");
   revalidatePath("/transactions");

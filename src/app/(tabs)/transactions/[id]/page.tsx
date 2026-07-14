@@ -1,8 +1,11 @@
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app/AppShell";
 import { TxWorkspace, type EmbeddedChat } from "@/components/tx/TxWorkspace";
+import { TxDocsSection } from "@/components/project/DocsDisplay";
 import { loadTxDetail, statusLabel } from "@/server/txData";
 import { loadChat, loadUnreadChats } from "@/server/chatData";
+import { loadTransactionDocuments } from "@/server/projectDocs";
+import { currentCompanyId } from "@/server/acting";
 import { availableActions, nextHint } from "@/domain/transaction";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +25,11 @@ export default async function TransactionDetailPage({ params }: { params: Promis
       ? { projectId: chatDetail.projectId, partnerCompanyId: chatDetail.partnerCompanyId, role: chatDetail.role, messages: chatDetail.messages, unread, counterpartyReadAt: chatDetail.counterpartyReadAt }
       : null;
 
+  // 案件資料（成立時点のスナップショット＋成立後の追加）。取引当事者のみ参照可。
+  const me = await currentCompanyId();
+  const txDocs = await loadTransactionDocuments(id, me);
+  const documentsSlot = txDocs.ok && txDocs.docs.length > 0 ? <TxDocsSection docs={txDocs.docs} /> : null;
+
   return (
     <AppShell title={tx.projectName} back="/transactions" noPad>
       <TxWorkspace
@@ -34,6 +42,7 @@ export default async function TransactionDetailPage({ params }: { params: Promis
         nextHint={nextHint(tx)}
         timeline={timeline}
         chat={chat}
+        documentsSlot={documentsSlot}
       />
     </AppShell>
   );
