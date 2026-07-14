@@ -105,7 +105,22 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               {paused && <ListingButton projectId={pid} op="resume" />}
               <ListingButton projectId={pid} op="close" />
             </div>
+            <Link
+              href={`/projects/new?from=${pid}`}
+              className="flex items-center justify-center gap-1.5 rounded-xl border border-(--color-brand-line) bg-white py-2.5 text-[13.5px] font-bold text-(--color-brand-sub)"
+            >
+              ⧉ この内容で再投稿（複製）
+            </Link>
           </div>
+        )}
+        {/* 選定済み・掲載終了の自社案件も、内容を複製して新しい案件として再投稿できる */}
+        {isPrime && (matched || closed) && (
+          <Link
+            href={`/projects/new?from=${pid}`}
+            className="flex items-center justify-center gap-1.5 rounded-xl border border-(--color-brand-blue) bg-(--color-brand-blue-soft) py-2.5 text-[13.5px] font-bold text-(--color-brand-blue)"
+          >
+            ⧉ この内容で再投稿（複製）
+          </Link>
         )}
         {/* 元請の信用 */}
         {prime && (
