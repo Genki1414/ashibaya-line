@@ -27,9 +27,11 @@ export default async function TransactionDetailPage({ params }: { params: Promis
 
   // 案件資料（成立時点のスナップショット＋成立後の追加。既存取引は現在共有中を表示）。
   // 取引当事者なら 0 件でもセクションを常時表示する（当事者でなければ非表示）。
+  // 元請は取引画面から案件の資料管理ページへ入って追加・管理できる（取引後の追加も共有される）。
   const me = await currentCompanyId();
   const txDocs = await loadTransactionDocuments(id, me);
-  const documentsSlot = txDocs.ok ? <TxDocsSection docs={txDocs.docs} /> : null;
+  const manageHref = role === "prime" ? `/projects/${projectId}/documents?from=/transactions/${id}` : null;
+  const documentsSlot = txDocs.ok ? <TxDocsSection docs={txDocs.docs} manageHref={manageHref} /> : null;
 
   return (
     <AppShell title={tx.projectName} back="/transactions" noPad>
