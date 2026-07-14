@@ -54,10 +54,24 @@ export function ProjectDocsReadonly({ docs }: { docs: ProjectDocView[] }) {
 
 const STATUS_LABEL = { current: "現在公開中", deleted: "現在は削除済み" } as const;
 
-/** 取引詳細の資料セクション。成立前からの資料／成立後に追加／既存取引の移行資料を分けて表示。常に表示。 */
-export function TxDocsSection({ docs }: { docs: TxDocView[] }) {
+/**
+ * 取引詳細の資料セクション。成立前からの資料／成立後に追加／既存取引の移行資料を分けて表示。常に表示。
+ * manageHref を渡すと（元請のみ）先頭に「資料を追加・管理」導線を出す。取引後に追加した資料も共有される。
+ */
+export function TxDocsSection({ docs, manageHref }: { docs: TxDocView[]; manageHref?: string | null }) {
+  const ManageLink = manageHref ? (
+    <a href={manageHref} className="mb-2 flex items-center justify-center gap-1.5 rounded-xl border border-(--color-brand-blue) bg-(--color-brand-blue-soft) py-2.5 text-[13px] font-bold text-(--color-brand-blue)">
+      ＋ 案件資料を追加・管理する
+    </a>
+  ) : null;
+
   if (docs.length === 0) {
-    return <div className="rounded-2xl border border-(--color-brand-line) bg-white p-4 text-center text-[12.5px] text-(--color-brand-sub)">現在共有されている案件資料はありません。</div>;
+    return (
+      <div>
+        {ManageLink}
+        <div className="rounded-2xl border border-(--color-brand-line) bg-white p-4 text-center text-[12.5px] text-(--color-brand-sub)">現在共有されている案件資料はありません。</div>
+      </div>
+    );
   }
   const before = docs.filter((d) => d.origin === "before");
   const after = docs.filter((d) => d.origin === "after");
@@ -90,6 +104,7 @@ export function TxDocsSection({ docs }: { docs: TxDocView[] }) {
 
   return (
     <div className="space-y-3">
+      {ManageLink}
       {before.length > 0 && (
         <div>
           <div className="mb-1.5 text-[12px] font-bold text-(--color-brand-faint)">取引成立前からの資料（成立時点で共有済み）</div>
