@@ -105,3 +105,19 @@ export async function createMember(_prev: AdminActionResult | null, formData: Fo
     return { ok: false, error: e instanceof Error ? e.message : "メンバーの作成に失敗しました" };
   }
 }
+
+/**
+ * 全社の実績データを取引イベントから再計算する。数値の手編集ではなく、
+ * 常にイベントからの再集計のみ（管理者も数値は直接編集できない）。
+ */
+export async function recomputeAllPerformanceAction(): Promise<AdminActionResult> {
+  try {
+    await assertAdmin();
+    const { recomputePerformance } = await import("@/server/performance");
+    const n = await recomputePerformance();
+    revalidatePath("/admin");
+    return { ok: true, message: `${n}社の実績データを再計算しました` };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "実績の再計算に失敗しました" };
+  }
+}
