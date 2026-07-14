@@ -104,12 +104,13 @@ export function projectToRow(project: Project): ProjectRow {
 export function rowToProject(row: ProjectRow): Project {
   // 旧データの state jsonb は prefecture/city を持たないため、列値または空で補完して
   // Project の形を常に満たす（region は表示互換で残す）。
-  const s = row.state as Project & { prefecture?: string; city?: string };
+  const s = row.state as Project & { prefecture?: string; city?: string; disclosedTo?: Project["disclosedTo"] };
   return {
     ...s,
     prefecture: s.prefecture ?? row.prefecture ?? "",
     city: s.city ?? row.city ?? "",
     region: s.region ?? row.region ?? "",
+    disclosedTo: s.disclosedTo ?? [], // 旧データ互換（未許可）
   };
 }
 

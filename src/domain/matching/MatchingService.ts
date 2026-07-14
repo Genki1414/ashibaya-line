@@ -44,7 +44,9 @@ export function selectPartnerForProject(project: Project, partnerId: CompanyId, 
     return err(new DomainError("NOT_AN_APPLICANT", "応募していない会社を選定することはできません"));
   }
 
-  const matchedProject: Project = { ...project, stage: "matched" };
+  // 選定会社には募集要項の閲覧を自動許可する。
+  const disclosedTo = project.disclosedTo.includes(partnerId) ? project.disclosedTo : [...project.disclosedTo, partnerId];
+  const matchedProject: Project = { ...project, stage: "matched", disclosedTo };
   const { assemblyAmount, dismantleAmount } = splitPhaseAmounts(project);
 
   const transaction = createTransaction({

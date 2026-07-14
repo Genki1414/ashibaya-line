@@ -65,8 +65,31 @@ export function postProject(input: PostProjectInput): Result<Project> {
       guaranteed: input.guaranteed,
       primeId: input.primeId,
       applicantIds: [],
+      disclosedTo: [],
     }),
   );
+}
+
+/** 募集要項の詳細を、その応募会社に閲覧許可する（元請）。 */
+export function grantDisclosure(project: Project, partnerId: CompanyId): Result<Project> {
+  if (project.disclosedTo.includes(partnerId)) return ok(project);
+  return ok({ ...project, disclosedTo: [...project.disclosedTo, partnerId] });
+}
+
+/** 募集要項の閲覧許可を取り消す（元請）。 */
+export function revokeDisclosure(project: Project, partnerId: CompanyId): Result<Project> {
+  return ok({ ...project, disclosedTo: project.disclosedTo.filter((c) => c !== partnerId) });
+}
+
+/**
+ * 詳しい募集要項を閲覧できるか。元請本人・選定会社・元請が許可した応募会社のみ。
+ * それ以外の会社には、基本情報のみ見せて詳細は隠す（許可制）。
+ */
+export function canViewRequirements(project: Project, viewerId: string | null, isSelectedPartner = false): boolean {
+  if (!viewerId) return false;
+  if ((project.primeId as unknown as string) === viewerId) return true;
+  if (isSelectedPartner) return true;
+  return project.disclosedTo.some((c) => (c as unknown as string) === viewerId);
 }
 
 export type EditProjectInput = Omit<PostProjectInput, "id" | "postedAt" | "primeId">;

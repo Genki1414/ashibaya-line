@@ -34,4 +34,6 @@ export interface Project {
   readonly guaranteed: boolean;
   readonly primeId: CompanyId;
   readonly applicantIds: readonly CompanyId[];
+  /** 募集要項の詳細を閲覧許可した会社（応募者単位）。元請が許可する。選定会社は自動許可。 */
+  readonly disclosedTo: readonly CompanyId[];
 }
