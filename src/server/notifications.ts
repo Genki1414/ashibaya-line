@@ -2,6 +2,9 @@ import { getContainer } from "./container";
 import { listProjects } from "./projectData";
 import { loadUnreadChats } from "./chatData";
 import { hasUnackedChange } from "./txData";
+import { chatTargetHref } from "../lib/chatTarget";
+
+export { chatTargetHref };
 
 export type NotificationKind = "応募" | "選定" | "受注" | "チャット" | "変更";
 
@@ -36,7 +39,7 @@ export async function loadNotifications(): Promise<AppNotification[]> {
       kind: "チャット",
       title: `「${c.projectName}」${c.counterpartyName}`,
       body: `新着メッセージ ${c.count}件：${c.lastText}`,
-      href: txId ? `/transactions/${txId}` : `/projects/${c.projectId}/chat/${c.partnerCompanyId}`,
+      href: chatTargetHref({ txId, projectId: c.projectId, partnerCompanyId: c.partnerCompanyId }),
     });
   }
 

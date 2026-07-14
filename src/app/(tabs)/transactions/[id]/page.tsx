@@ -25,10 +25,11 @@ export default async function TransactionDetailPage({ params }: { params: Promis
       ? { projectId: chatDetail.projectId, partnerCompanyId: chatDetail.partnerCompanyId, role: chatDetail.role, messages: chatDetail.messages, unread, counterpartyReadAt: chatDetail.counterpartyReadAt }
       : null;
 
-  // 案件資料（成立時点のスナップショット＋成立後の追加）。取引当事者のみ参照可。
+  // 案件資料（成立時点のスナップショット＋成立後の追加。既存取引は現在共有中を表示）。
+  // 取引当事者なら 0 件でもセクションを常時表示する（当事者でなければ非表示）。
   const me = await currentCompanyId();
   const txDocs = await loadTransactionDocuments(id, me);
-  const documentsSlot = txDocs.ok && txDocs.docs.length > 0 ? <TxDocsSection docs={txDocs.docs} /> : null;
+  const documentsSlot = txDocs.ok ? <TxDocsSection docs={txDocs.docs} /> : null;
 
   return (
     <AppShell title={tx.projectName} back="/transactions" noPad>
