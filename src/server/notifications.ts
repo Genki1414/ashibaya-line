@@ -2,11 +2,12 @@ import { getContainer } from "./container";
 import { listProjects } from "./projectData";
 import { loadUnreadChats } from "./chatData";
 import { hasUnackedChange } from "./txData";
+import { loadDocumentNotifications, type DocNotifTarget } from "./projectDocs";
 import { chatTargetHref } from "../lib/chatTarget";
 
 export { chatTargetHref };
 
-export type NotificationKind = "応募" | "選定" | "受注" | "チャット" | "変更";
+export type NotificationKind = "応募" | "選定" | "受注" | "チャット" | "変更" | "資料";
 
 export interface AppNotification {
   kind: NotificationKind;
@@ -47,6 +48,26 @@ export async function loadNotifications(): Promise<AppNotification[]> {
     if (p.isOwn && p.stage === "recruiting" && p.applicants > 0) {
       items.push({ kind: "応募", title: `案件「${p.name}」`, body: `${p.applicants}社が応募しています`, href: `/projects/${p.id}` });
     }
+  }
+
+  // 新しい案件資料の通知：選定後は取引相手（選定会社）へ、選定前は応募会社へ（閲覧可能な資料のみ）。
+  const docTargets: DocNotifTarget[] = [];
+  for (const p of projects) {
+    if (!p.isOwn && p.applied && p.stage === "recruiting") docTargets.push({ projectId: p.id, projectName: p.name, tier: "applicant" });
+  }
+  for (const t of txs) {
+    if ((t.partnerId as unknown as string) === me) {
+      const pid = (t.chatKey as string).split(":")[0];
+      docTargets.push({ projectId: pid, projectName: t.projectName, tier: "selected", txId: t.id as unknown as string });
+    }
+  }
+  for (const dn of await loadDocumentNotifications(me, docTargets)) {
+    items.push({
+      kind: "資料",
+      title: `「${dn.projectName}」`,
+      body: `新しい案件資料が${dn.count}件あります`,
+      href: dn.txId ? `/transactions/${dn.txId}#tx-docs` : `/projects/${dn.projectId}#docs`,
+    });
   }
 
   for (const t of txs) {

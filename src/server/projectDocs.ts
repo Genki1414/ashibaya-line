@@ -168,6 +168,8 @@ export async function loadProjectDocuments(projectId: string, viewerCompanyId: s
   const visible = rows.filter((r) => canViewDocument(r.visibility, tier));
   const urls = await signedMap(admin, visible.map((r) => r.storage_path));
   const docs = visible.map((r) => toView(r, urls.get(r.storage_path) ?? null));
+  // 案件詳細で資料を見た時点を記録（新着資料通知のクリア）。
+  if (viewerCompanyId) await markDocumentsSeen(projectId, viewerCompanyId);
   return { tier, canManage: isPrime, docs };
 }
 
@@ -435,7 +437,67 @@ export async function loadTransactionDocuments(transactionId: string, viewerComp
   if (docs.length > 0 && tx.project_id) {
     await audit(admin, "url_issued", tx.project_id, null, { transactionId, count: docs.length, viewer: viewerCompanyId, legacy });
   }
+  // 取引詳細で資料を見た時点を記録（新着資料通知のクリア）。
+  if (tx.project_id) await markDocumentsSeen(tx.project_id, viewerCompanyId);
   return { ok: true, legacy, docs };
+}
+
+// ── 新着案件資料の通知（応募会社／選定会社向け） ──
+
+/** 会社が案件の資料を見た時点を記録（新着通知のクリアに使う）。案件詳細/取引詳細を開いたとき呼ぶ。 */
+export async function markDocumentsSeen(projectId: string, companyId: string): Promise<void> {
+  const admin = adminOrNull();
+  if (!admin) return;
+  await admin
+    .from("project_document_reads")
+    .upsert({ company_id: companyId, project_id: projectId, last_seen_at: new Date().toISOString() }, { onConflict: "company_id,project_id" });
+}
+
+export interface DocNotifTarget {
+  projectId: string;
+  projectName: string;
+  /** applicant＝応募済み（選定前）、selected＝選定・受注済み。 */
+  tier: "applicant" | "selected";
+  txId?: string | null;
+}
+export interface DocNotification {
+  projectId: string;
+  projectName: string;
+  count: number;
+  txId: string | null;
+}
+
+/**
+ * 対象の案件について、その会社が閲覧可能でまだ見ていない（last_seen より新しい）資料の件数を数える。
+ * 公開範囲に応じて数えるため、応募会社には選定限定資料は通知されない。元請自身は対象に含めない。
+ */
+export async function loadDocumentNotifications(companyId: string, targets: DocNotifTarget[]): Promise<DocNotification[]> {
+  const admin = adminOrNull();
+  if (!admin || targets.length === 0) return [];
+  const projectIds = [...new Set(targets.map((t) => t.projectId))];
+
+  const [docRes, readRes] = await Promise.all([
+    admin.from("project_documents").select("project_id, visibility, created_at").in("project_id", projectIds).is("deleted_at", null),
+    admin.from("project_document_reads").select("project_id, last_seen_at").eq("company_id", companyId).in("project_id", projectIds),
+  ]);
+  const docs = (docRes.data ?? []) as { project_id: string; visibility: DocVisibility; created_at: string }[];
+  const lastSeen = new Map(((readRes.data ?? []) as { project_id: string; last_seen_at: string }[]).map((r) => [r.project_id, r.last_seen_at]));
+
+  const byProject = new Map<string, { visibility: DocVisibility; created_at: string }[]>();
+  for (const d of docs) {
+    const arr = byProject.get(d.project_id) ?? [];
+    arr.push({ visibility: d.visibility, created_at: d.created_at });
+    byProject.set(d.project_id, arr);
+  }
+
+  const result: DocNotification[] = [];
+  for (const t of targets) {
+    const seen = lastSeen.get(t.projectId) ?? "1970-01-01T00:00:00Z";
+    const tier: ViewerTier = t.tier;
+    const count = (byProject.get(t.projectId) ?? []).filter((d) => d.created_at > seen && canViewDocument(d.visibility, tier)).length;
+    if (count > 0) result.push({ projectId: t.projectId, projectName: t.projectName, count, txId: t.txId ?? null });
+  }
+  return result;
 }
 
 export { MAX_DOC_BYTES };
