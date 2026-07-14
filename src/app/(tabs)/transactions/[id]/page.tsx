@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app/AppShell";
 import { TxWorkspace, type EmbeddedChat } from "@/components/tx/TxWorkspace";
 import { TxDocsSection } from "@/components/project/DocsDisplay";
+import { TxDocUploader } from "./TxDocUploader";
 import { loadTxDetail, statusLabel } from "@/server/txData";
 import { loadChat, loadUnreadChats } from "@/server/chatData";
 import { loadTransactionDocuments } from "@/server/projectDocs";
@@ -30,8 +31,9 @@ export default async function TransactionDetailPage({ params }: { params: Promis
   // 元請は取引画面から案件の資料管理ページへ入って追加・管理できる（取引後の追加も共有される）。
   const me = await currentCompanyId();
   const txDocs = await loadTransactionDocuments(id, me);
-  const manageHref = role === "prime" ? `/projects/${projectId}/documents?from=/transactions/${id}` : null;
-  const documentsSlot = txDocs.ok ? <TxDocsSection docs={txDocs.docs} manageHref={manageHref} /> : null;
+  // 元請は取引画面内でその場で資料を追加できる（公開範囲は選定会社のみに固定）。
+  const uploaderSlot = role === "prime" ? <TxDocUploader projectId={projectId} txId={id} /> : null;
+  const documentsSlot = txDocs.ok ? <TxDocsSection docs={txDocs.docs} uploaderSlot={uploaderSlot} /> : null;
 
   return (
     <AppShell title={tx.projectName} back="/transactions" noPad>
