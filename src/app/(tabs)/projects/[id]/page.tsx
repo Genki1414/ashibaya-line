@@ -22,7 +22,7 @@ import { loadProjectDocuments } from "@/server/projectDocs";
 import { currentCompanyId } from "@/server/acting";
 import { companyCreditLevel, companyFactsOf, type Company } from "@/domain/company";
 import { continuousCount } from "@/domain/credit";
-import { ApplyButton, SelectButton } from "./buttons";
+import { ApplyButton, SelectButton, WithdrawButton, ListingButton } from "./buttons";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +57,10 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const isPrime = myCompanyId != null && myCompanyId === (project.primeId as unknown as string);
   const alreadyApplied = myCompanyId != null && project.applicantIds.some((a) => (a as unknown as string) === myCompanyId);
   const recruiting = project.stage === "recruiting";
+  const paused = project.stage === "paused";
+  const matched = project.stage === "matched";
+  const closed = project.stage === "closed";
+  const pid = project.id as unknown as string;
 
   // 応募可否：元請ではなく、まだ応募していない募集中案件のみ。受注可否（本部承認）は Server Action 側でも再確認。
   const canApply = Boolean(myCompanyId) && !isPrime && !alreadyApplied && recruiting;
@@ -72,14 +76,33 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   return (
     <AppShell title={project.name} back="/projects">
       <div className="space-y-4">
-        {/* 元請本人・募集中のみ編集可 */}
-        {isPrime && recruiting && (
-          <Link
-            href={`/projects/${project.id as unknown as string}/edit`}
-            className="flex items-center justify-center gap-1.5 rounded-xl border border-(--color-brand-blue) bg-(--color-brand-blue-soft) py-2.5 text-[13.5px] font-bold text-(--color-brand-blue)"
-          >
-            ✎ 案件内容を編集する
-          </Link>
+        {/* 状態バナー（一時停止中・掲載終了） */}
+        {paused && (
+          <div className="rounded-xl border border-(--color-brand-amber) bg-(--color-brand-amber-soft) px-3 py-2.5 text-[12.5px] font-bold text-(--color-brand-amber)">
+            この案件は現在、募集を一時停止中です（検索・一覧に表示されません）。
+          </div>
+        )}
+        {closed && (
+          <div className="rounded-xl border border-(--color-brand-line) bg-(--color-brand-bg) px-3 py-2.5 text-[12.5px] font-bold text-(--color-brand-sub)">
+            この案件は掲載を終了しています。
+          </div>
+        )}
+
+        {/* 元請の掲載管理（編集・一時停止／再開・削除） */}
+        {isPrime && (recruiting || paused) && (
+          <div className="space-y-2">
+            <Link
+              href={`/projects/${pid}/edit`}
+              className="flex items-center justify-center gap-1.5 rounded-xl border border-(--color-brand-blue) bg-(--color-brand-blue-soft) py-2.5 text-[13.5px] font-bold text-(--color-brand-blue)"
+            >
+              ✎ 案件内容を編集する
+            </Link>
+            <div className="flex gap-2">
+              {recruiting && <ListingButton projectId={pid} op="pause" />}
+              {paused && <ListingButton projectId={pid} op="resume" />}
+              <ListingButton projectId={pid} op="close" />
+            </div>
+          </div>
         )}
         {/* 元請の信用 */}
         {prime && (
@@ -224,24 +247,35 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         {/* 応募アクション／状態（非元請の会社向け。自分の応募状態のみ表示） */}
         {!isPrime && myCompanyId && (
           <div className="space-y-2 pt-1">
-            {alreadyApplied && recruiting ? (
-              <div className="rounded-xl bg-(--color-brand-blue-soft) px-3 py-3 text-center text-[13.5px] font-bold text-(--color-brand-blue)">
-                応募中です。元請の選定をお待ちください。
-              </div>
-            ) : alreadyApplied && !recruiting ? (
+            {alreadyApplied && (recruiting || paused) ? (
+              <>
+                <div className="rounded-xl bg-(--color-brand-blue-soft) px-3 py-3 text-center text-[13.5px] font-bold text-(--color-brand-blue)">
+                  応募中です。{paused ? "現在この案件は一時停止中です。" : "元請の選定をお待ちください。"}
+                </div>
+                <WithdrawButton projectId={pid} />
+              </>
+            ) : alreadyApplied && matched ? (
               <div className="rounded-xl bg-(--color-brand-bg) px-3 py-3 text-center text-[13px] text-(--color-brand-sub)">
                 この案件の選定は終了しました。受注できた場合は「取引」タブに表示されます。
               </div>
-            ) : !recruiting ? (
+            ) : paused ? (
+              <div className="rounded-xl bg-(--color-brand-bg) px-3 py-3 text-center text-[13px] text-(--color-brand-sub)">
+                この案件は現在、募集を一時停止しています。
+              </div>
+            ) : closed ? (
+              <div className="rounded-xl bg-(--color-brand-bg) px-3 py-3 text-center text-[13px] text-(--color-brand-sub)">
+                この案件は掲載を終了しました。
+              </div>
+            ) : matched ? (
               <div className="rounded-xl bg-(--color-brand-bg) px-3 py-3 text-center text-[13px] text-(--color-brand-sub)">
                 この案件は選定済みです。
               </div>
             ) : (
-              <ApplyButton projectId={project.id as unknown as string} disabled={!canApply} />
+              <ApplyButton projectId={pid} disabled={!canApply} />
             )}
-            {alreadyApplied && (
+            {alreadyApplied && !matched && (
               <Link
-                href={`/projects/${project.id as unknown as string}/chat/${myCompanyId}`}
+                href={`/projects/${pid}/chat/${myCompanyId}`}
                 className="flex items-center justify-center gap-1.5 rounded-xl border border-(--color-brand-blue) py-2.5 text-center text-[13.5px] font-bold text-(--color-brand-blue)"
               >
                 元請とチャットする

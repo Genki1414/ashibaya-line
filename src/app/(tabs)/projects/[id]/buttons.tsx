@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { applyAction, selectPartnerAction } from "../actions";
+import { applyAction, selectPartnerAction, withdrawApplicationAction, setListingStateAction } from "../actions";
 
 function Toast({ msg, ok }: { msg: string; ok: boolean }) {
   return (
@@ -15,7 +15,7 @@ function Toast({ msg, ok }: { msg: string; ok: boolean }) {
   );
 }
 
-function ConfirmOverlay({ title, message, pending, onConfirm, onClose }: { title: string; message: string; pending: boolean; onConfirm: () => void; onClose: () => void }) {
+function ConfirmOverlay({ title, message, pending, onConfirm, onClose, danger, confirmLabel }: { title: string; message: string; pending: boolean; onConfirm: () => void; onClose: () => void; danger?: boolean; confirmLabel?: string }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
       <div className="w-full max-w-[360px] rounded-t-2xl bg-white p-5 sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
@@ -23,12 +23,65 @@ function ConfirmOverlay({ title, message, pending, onConfirm, onClose }: { title
         <div className="mt-2 text-[12.5px] text-(--color-brand-sub)">{message}</div>
         <div className="mt-4 flex gap-2">
           <button onClick={onClose} className="flex-1 rounded-xl border border-(--color-brand-line) py-2.5 text-[14px] font-bold text-(--color-brand-sub)">キャンセル</button>
-          <button onClick={onConfirm} disabled={pending} className="flex-1 rounded-xl bg-(--color-brand-blue) py-2.5 text-[14px] font-bold text-white disabled:opacity-50">
-            {pending ? "処理中…" : "実行する"}
+          <button onClick={onConfirm} disabled={pending} className="flex-1 rounded-xl py-2.5 text-[14px] font-bold text-white disabled:opacity-50" style={{ background: danger ? "var(--color-brand-red)" : "var(--color-brand-blue)" }}>
+            {pending ? "処理中…" : confirmLabel ?? "実行する"}
           </button>
         </div>
       </div>
     </div>
+  );
+}
+
+/** 応募の取り消し（応募会社本人）。 */
+export function WithdrawButton({ projectId }: { projectId: string }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+  const [open, setOpen] = useState(false);
+  const show = (msg: string, ok: boolean) => { setToast({ msg, ok }); setTimeout(() => setToast(null), 2800); };
+  const run = () =>
+    start(async () => {
+      const r = await withdrawApplicationAction(projectId);
+      if (r.ok) { setOpen(false); show("応募を取り消しました", true); router.refresh(); }
+      else show(r.error ?? "失敗しました", false);
+    });
+  return (
+    <>
+      <button onClick={() => setOpen(true)} disabled={pending} className="w-full rounded-xl border border-(--color-brand-red) py-2.5 text-[13.5px] font-bold text-(--color-brand-red) disabled:opacity-50">
+        応募を取り消す
+      </button>
+      {open && <ConfirmOverlay title="応募を取り消しますか？" message="この案件への応募を取り消します。あとで募集中であれば再度応募できます。" pending={pending} onConfirm={run} onClose={() => setOpen(false)} danger confirmLabel="取り消す" />}
+      {toast && <Toast msg={toast.msg} ok={toast.ok} />}
+    </>
+  );
+}
+
+/** 掲載の一時停止／再開／削除（元請）。 */
+export function ListingButton({ projectId, op }: { projectId: string; op: "pause" | "resume" | "close" }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+  const [open, setOpen] = useState(false);
+  const show = (msg: string, ok: boolean) => { setToast({ msg, ok }); setTimeout(() => setToast(null), 2800); };
+  const meta = {
+    pause: { btn: "掲載を一時停止", title: "掲載を一時停止しますか？", message: "検索・一覧に表示されなくなり、新規応募を停止します。応募済みの情報は保持され、いつでも再開できます。", done: "一時停止しました", danger: false, cls: "border border-(--color-brand-amber) text-(--color-brand-amber)" },
+    resume: { btn: "募集を再開", title: "募集を再開しますか？", message: "再び検索・一覧に表示され、応募を受け付けます。", done: "募集を再開しました", danger: false, cls: "border border-(--color-brand-green) text-(--color-brand-green)" },
+    close: { btn: "案件を削除", title: "この案件を削除しますか？", message: "一覧・検索から削除され、新規応募もできなくなります。選定済み（取引中）の案件は削除できません。", done: "案件を削除しました", danger: true, cls: "border border-(--color-brand-red) text-(--color-brand-red)" },
+  }[op];
+  const run = () =>
+    start(async () => {
+      const r = await setListingStateAction(projectId, op);
+      if (r.ok) { setOpen(false); show(meta.done, true); if (op === "close") router.push("/projects"); else router.refresh(); }
+      else show(r.error ?? "失敗しました", false);
+    });
+  return (
+    <>
+      <button onClick={() => setOpen(true)} disabled={pending} className={`w-full rounded-xl py-2.5 text-[13.5px] font-bold disabled:opacity-50 ${meta.cls}`}>
+        {meta.btn}
+      </button>
+      {open && <ConfirmOverlay title={meta.title} message={meta.message} pending={pending} onConfirm={run} onClose={() => setOpen(false)} danger={meta.danger} confirmLabel={op === "close" ? "削除する" : "実行する"} />}
+      {toast && <Toast msg={toast.msg} ok={toast.ok} />}
+    </>
   );
 }
 
