@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { rowToCompany, type CompanyRow } from "@/infra/supabase/mappers";
 import { companyCreditLevel } from "@/domain/company";
 import { signOut } from "@/app/(auth)/actions";
+import { PushToggle } from "@/app/push/PushToggle";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "マイアカウント" };
@@ -70,6 +71,8 @@ export default async function AccountPage() {
           </div>
         </div>
       )}
+
+      <PushToggle />
 
       <div className="mt-3 rounded-2xl border border-(--color-brand-line) bg-(--color-brand-blue-soft) p-4 text-[12px] leading-relaxed text-(--color-brand-sub)">
         Phase 1（認証基盤）が有効です。案件・取引などの画面は順次このアカウントに接続していきます。

@@ -18,6 +18,17 @@ export const metadata: Metadata = {
     template: "%s ｜ 足場信用プラットフォーム",
   },
   description: "足場会社向け 信用プラットフォーム",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: "/icon-192x192.png",
+    apple: "/icon-192x192.png",
+  },
+  // iOS でホーム画面に追加したときにスタンドアロン表示＋プッシュ通知を有効化する。
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "足場信用",
+  },
 };
 
 // スマホ画面に自動フィット（幅＝端末幅、初期倍率1、ノッチ対応）。
