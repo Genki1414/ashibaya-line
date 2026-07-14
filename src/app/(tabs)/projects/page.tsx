@@ -3,8 +3,10 @@ import { AppShell } from "@/components/app/AppShell";
 import { LevelBadge } from "@/components/company/parts";
 import { Notifications } from "@/components/app/Notifications";
 import { loadCompanyPageData } from "@/server/companyData";
-import { listProjects, type ProjectCardView } from "@/server/projectData";
+import { searchProjects, type ProjectCardView } from "@/server/projectData";
 import { loadUnreadChats } from "@/server/chatData";
+import { parseProjectFilter } from "@/domain/projectSearch";
+import { ProjectsFilterBar } from "./ProjectsFilterBar";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "案件" };
@@ -46,9 +48,10 @@ function ProjectCard({ p, unread }: { p: ProjectCardView; unread: number }) {
   );
 }
 
-export default async function ProjectsTab() {
+export default async function ProjectsTab({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const filter = parseProjectFilter(await searchParams);
   const { self, companyId } = await loadCompanyPageData();
-  const [projects, unreadChats] = await Promise.all([listProjects(companyId), loadUnreadChats()]);
+  const [{ cards: projects, total }, unreadChats] = await Promise.all([searchProjects(filter, companyId), loadUnreadChats()]);
   const unreadByProject = new Map<string, number>();
   for (const c of unreadChats) unreadByProject.set(c.projectId, (unreadByProject.get(c.projectId) ?? 0) + c.count);
   const canPost = self?.status === "active";
@@ -65,8 +68,11 @@ export default async function ProjectsTab() {
           案件の投稿（発注）は本部の承認後に可能になります。
         </div>
       )}
+      <ProjectsFilterBar filter={filter} total={total} />
       {projects.length === 0 ? (
-        <div className="rounded-2xl border border-(--color-brand-line) bg-white p-6 text-center text-[13px] text-(--color-brand-sub)">案件はまだありません。</div>
+        <div className="rounded-2xl border border-(--color-brand-line) bg-white p-6 text-center text-[13px] text-(--color-brand-sub)">
+          条件に合う募集中の案件はありません。<br />絞り込み条件を変えてお試しください。
+        </div>
       ) : (
         projects.map((p) => <ProjectCard key={p.id} p={p} unread={unreadByProject.get(p.id) ?? 0} />)
       )}

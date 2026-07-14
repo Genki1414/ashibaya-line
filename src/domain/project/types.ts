@@ -8,7 +8,13 @@ export interface Project {
   readonly stage: ProjectStage;
   readonly name: string;
   readonly jobType: JobType;
+  /** 都道府県（検索の正本）。旧データで未分割のものは空文字。 */
+  readonly prefecture: string;
+  /** 市区町村（検索の正本）。 */
+  readonly city: string;
+  /** 表示用の地域文字列。prefecture/city から機械生成（旧データ互換で残す）。 */
   readonly region: string;
+  /** 町名・番地などの詳細住所（一覧には出しすぎず、詳細で関係範囲に応じて表示）。 */
   readonly address: string;
   readonly overallSchedule: PhaseSchedule;
   readonly assemblySchedule: PhaseSchedule;

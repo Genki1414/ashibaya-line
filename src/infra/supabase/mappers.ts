@@ -65,10 +65,19 @@ export interface ProjectRow {
   deadline: string | null;
   posted: string | null;
   guaranteed: boolean;
+  // 0009 で追加した検索用の絞り込み列（select("state") のみのときは undefined）。
+  prefecture?: string | null;
+  city?: string | null;
+  starts_on?: string | null;
+  ends_on?: string | null;
+  has_assembly?: boolean | null;
+  has_dismantle?: boolean | null;
   state: Project;
 }
 
 export function projectToRow(project: Project): ProjectRow {
+  // 組立/解体フェーズは請負のみ分類する（応援＝単一フェーズは分類せず、案件種別で検索）。
+  const isContract = project.jobType === "contract";
   return {
     id: project.id,
     prime_id: project.primeId,
@@ -82,12 +91,26 @@ export function projectToRow(project: Project): ProjectRow {
     deadline: project.applicationDeadline,
     posted: project.postedAt,
     guaranteed: project.guaranteed,
+    prefecture: project.prefecture || null,
+    city: project.city || null,
+    starts_on: project.overallSchedule.plannedStart,
+    ends_on: project.overallSchedule.plannedEnd,
+    has_assembly: isContract && project.assemblySchedule.plannedStart != null,
+    has_dismantle: isContract && project.dismantleSchedule.plannedStart != null,
     state: project,
   };
 }
 
 export function rowToProject(row: ProjectRow): Project {
-  return row.state;
+  // 旧データの state jsonb は prefecture/city を持たないため、列値または空で補完して
+  // Project の形を常に満たす（region は表示互換で残す）。
+  const s = row.state as Project & { prefecture?: string; city?: string };
+  return {
+    ...s,
+    prefecture: s.prefecture ?? row.prefecture ?? "",
+    city: s.city ?? row.city ?? "",
+    region: s.region ?? row.region ?? "",
+  };
 }
 
 export interface TransactionRow {

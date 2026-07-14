@@ -2,11 +2,21 @@ import { CompanyId, DomainError, IsoDate, Money, ProjectId, Result, andThen, err
 import { ClosingDay, JobType, PayTerm, PayType, PhaseSchedule } from "../transaction";
 import { Project } from "./types";
 
+/** prefecture / city から表示用の region を機械生成する（今後 region は検索の正本にしない）。 */
+export function regionText(prefecture: string, city: string, fallback = ""): string {
+  const joined = [prefecture.trim(), city.trim()].filter(Boolean).join(" ");
+  return joined || fallback;
+}
+
 export interface PostProjectInput {
   readonly id: ProjectId;
   readonly name: string;
   readonly jobType: JobType;
-  readonly region: string;
+  /** 都道府県・市区町村（検索の正本）。region は生成する。 */
+  readonly prefecture?: string;
+  readonly city?: string;
+  /** 旧データ互換：prefecture/city 未指定時の表示用地域。 */
+  readonly region?: string;
   readonly address: string;
   readonly overallSchedule: PhaseSchedule;
   readonly assemblySchedule: PhaseSchedule;
@@ -28,13 +38,17 @@ export function postProject(input: PostProjectInput): Result<Project> {
   if (input.need !== null && (!Number.isInteger(input.need) || input.need <= 0)) {
     return err(new DomainError("INVALID_NEED", "募集人数は1以上の整数で指定してください"));
   }
+  const prefecture = (input.prefecture ?? "").trim();
+  const city = (input.city ?? "").trim();
   return andThen(money(input.unitPrice), (unitPrice) =>
     ok({
       id: input.id,
       stage: "recruiting",
       name: input.name,
       jobType: input.jobType,
-      region: input.region,
+      prefecture,
+      city,
+      region: regionText(prefecture, city, input.region ?? ""),
       address: input.address,
       overallSchedule: input.overallSchedule,
       assemblySchedule: input.assemblySchedule,
@@ -65,12 +79,16 @@ export function editProject(project: Project, input: EditProjectInput): Result<P
   if (input.need !== null && (!Number.isInteger(input.need) || input.need <= 0)) {
     return err(new DomainError("INVALID_NEED", "募集人数は1以上の整数で指定してください"));
   }
+  const prefecture = (input.prefecture ?? "").trim();
+  const city = (input.city ?? "").trim();
   return andThen(money(input.unitPrice), (unitPrice) =>
     ok({
       ...project,
       name: input.name,
       jobType: input.jobType,
-      region: input.region,
+      prefecture,
+      city,
+      region: regionText(prefecture, city, input.region ?? project.region),
       address: input.address,
       overallSchedule: input.overallSchedule,
       assemblySchedule: input.assemblySchedule,

@@ -2,6 +2,7 @@ import { createClient } from "../lib/supabase/server";
 import { rowToCompany, rowToProject, type CompanyRow, type ProjectRow } from "../infra/supabase/mappers";
 import { companyCreditLevel, type Company } from "../domain/company";
 import type { Project } from "../domain/project";
+import type { ProjectFilter } from "../domain/projectSearch";
 
 export interface ProjectCardView {
   id: string;
@@ -43,6 +44,61 @@ function toCard(p: Project, primeById: Map<string, Company>, myCompanyId: string
     isOwn: p.primeId === myCompanyId,
     applied: myCompanyId != null && p.applicantIds.some((a) => (a as unknown as string) === myCompanyId),
   };
+}
+
+export interface ProjectSearchResult {
+  cards: ProjectCardView[];
+  total: number;
+}
+
+/**
+ * 条件で案件を検索する。絞り込みは Supabase 側の列（prefecture/city/job_type/
+ * starts_on/ends_on/unit_price/need/guaranteed/has_assembly/has_dismantle 等）で行い、
+ * 全件取得後のクライアント絞り込みには依存しない。
+ * カードは自分の応募状態のみ露出し、他社の応募情報は返さない（第三者秘匿）。
+ */
+export async function searchProjects(filter: ProjectFilter, myCompanyId: string | null): Promise<ProjectSearchResult> {
+  const supabase = await createClient();
+  const today = new Date().toISOString().slice(0, 10);
+
+  // 本部承認済み（status=active）の元請ID。primeApproved フィルタで prime_id を DB 側で絞る。
+  let approvedIds: string[] | null = null;
+  if (filter.primeApproved) {
+    const { data } = await supabase.from("companies").select("id").eq("status", "active");
+    approvedIds = (data ?? []).map((r) => (r as { id: string }).id);
+    if (approvedIds.length === 0) return { cards: [], total: 0 };
+  }
+
+  let q = supabase.from("projects").select("state", { count: "exact" });
+  if (filter.recruitingOnly) q = q.eq("stage", "recruiting");
+  if (!filter.includeEnded) q = q.gte("deadline", today);
+  if (filter.jobType) q = q.eq("job_type", filter.jobType);
+  if (filter.prefecture) q = q.eq("prefecture", filter.prefecture);
+  if (filter.city) q = q.ilike("city", `%${filter.city}%`);
+  if (filter.phase === "assembly") q = q.eq("has_assembly", true).eq("has_dismantle", false);
+  if (filter.phase === "dismantle") q = q.eq("has_assembly", false).eq("has_dismantle", true);
+  if (filter.phase === "both") q = q.eq("has_assembly", true).eq("has_dismantle", true);
+  if (filter.periodStart) q = q.gte("ends_on", filter.periodStart);
+  if (filter.periodEnd) q = q.lte("starts_on", filter.periodEnd);
+  if (filter.amountMin != null) q = q.gte("unit_price", filter.amountMin);
+  if (filter.amountMax != null) q = q.lte("unit_price", filter.amountMax);
+  if (filter.need === "1") q = q.eq("need", 1);
+  if (filter.need === "2") q = q.eq("need", 2);
+  if (filter.need === "3plus") q = q.gte("need", 3);
+  if (filter.guaranteed) q = q.eq("guaranteed", true);
+  if (approvedIds) q = q.in("prime_id", approvedIds);
+
+  if (filter.sort === "amountDesc") q = q.order("unit_price", { ascending: false });
+  else if (filter.sort === "startSoon") q = q.order("starts_on", { ascending: true, nullsFirst: false });
+  else q = q.order("posted", { ascending: false }).order("created_at", { ascending: false });
+
+  const { data: projectRows, count } = await q;
+  const projects = (projectRows ?? []).map((r) => rowToProject(r as unknown as ProjectRow));
+
+  const { data: companyRows } = await supabase.from("companies").select("*");
+  const primeById = new Map((companyRows ?? []).map((r) => rowToCompany(r as unknown as CompanyRow)).map((c) => [c.id, c]));
+  const cards = projects.map((p) => toCard(p, primeById, myCompanyId));
+  return { cards, total: count ?? cards.length };
 }
 
 export async function listProjects(myCompanyId: string | null): Promise<ProjectCardView[]> {
