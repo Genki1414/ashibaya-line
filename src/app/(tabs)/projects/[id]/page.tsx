@@ -14,9 +14,11 @@ import {
   type MetricsView,
 } from "@/components/company/parts";
 import { PrimePerformanceCard } from "@/components/company/PerformancePanel";
+import { ProjectDocsReadonly } from "@/components/project/DocsDisplay";
 import { loadProjectDetail } from "@/server/projectData";
 import { loadUnreadChats } from "@/server/chatData";
 import { loadCompanyPerformance } from "@/server/performanceData";
+import { loadProjectDocuments } from "@/server/projectDocs";
 import { currentCompanyId } from "@/server/acting";
 import { companyCreditLevel, companyFactsOf, type Company } from "@/domain/company";
 import { continuousCount } from "@/domain/credit";
@@ -62,6 +64,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const today = new Date().toISOString().slice(0, 10);
   const primeFacts = prime ? companyFactsOf(prime, false, today) : null;
   const primePerf = prime ? await loadCompanyPerformance(project.primeId as unknown as string) : null;
+  const { docs: projectDocs, canManage: canManageDocs } = await loadProjectDocuments(id, myCompanyId);
 
   const unreadByChatKey = new Map((await loadUnreadChats()).map((c) => [c.chatKey, c.count]));
   const unreadFor = (companyId: string) => unreadByChatKey.get(`${project.id as unknown as string}:${companyId}`) ?? 0;
@@ -107,6 +110,24 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             <PrimePerformanceCard p={primePerf.asPrime} />
           </div>
         )}
+        {/* 案件資料（公開範囲に応じて表示。管理は元請のみ） */}
+        <div>
+          <SectionLabel
+            text="案件資料"
+            right={canManageDocs ? (
+              <Link href={`/projects/${project.id as unknown as string}/documents`} className="text-[12px] font-bold text-(--color-brand-blue)">＋ 管理</Link>
+            ) : undefined}
+          />
+          {projectDocs.length > 0 ? (
+            <ProjectDocsReadonly docs={projectDocs} />
+          ) : (
+            <Card>
+              <div className="text-[12.5px] text-(--color-brand-sub)">
+                {canManageDocs ? "まだ資料はありません。「＋ 管理」から図面・写真・書類を追加できます。" : "公開されている資料はありません。"}
+              </div>
+            </Card>
+          )}
+        </div>
 
         {/* 募集要項 */}
         <div>

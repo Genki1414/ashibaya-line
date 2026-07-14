@@ -113,9 +113,11 @@ export interface TxWorkspaceProps {
   nextHint: string;
   timeline: TimelineEntry[];
   chat: EmbeddedChat | null;
+  /** 案件資料セクション（サーバで描画して渡す。署名付きURLを含むため server component の出力）。 */
+  documentsSlot?: React.ReactNode;
 }
 
-export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, nextHint, timeline, chat }: TxWorkspaceProps) {
+export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, nextHint, timeline, chat, documentsSlot }: TxWorkspaceProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [toast, setToast] = useState<{ ok: boolean; message: string } | null>(null);
@@ -322,6 +324,13 @@ export function TxWorkspace({ tx, role, actions, prime, partner, statusLabel, ne
           </SmallButton>
         </div>
       </Section>
+
+      {/* 案件資料（成立時点のスナップショット＋成立後の追加。証拠保全のため削除されても履歴は残る） */}
+      {documentsSlot && (
+        <Section title="案件資料" defaultOpen={false}>
+          {documentsSlot}
+        </Section>
+      )}
 
       {/* 案件チャット（応募〜取引で同一チャットを継続） */}
       <div id="tx-chat" className="scroll-mt-16" />
