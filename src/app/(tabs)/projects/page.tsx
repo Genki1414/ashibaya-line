@@ -3,7 +3,7 @@ import { AppShell } from "@/components/app/AppShell";
 import { LevelBadge } from "@/components/company/parts";
 import { Notifications } from "@/components/app/Notifications";
 import { loadCompanyPageData } from "@/server/companyData";
-import { searchProjects, listOwnPausedProjects, type ProjectCardView } from "@/server/projectData";
+import { searchProjects, listOwnActiveProjects, type ProjectCardView } from "@/server/projectData";
 import { loadUnreadChats } from "@/server/chatData";
 import { parseProjectFilter } from "@/domain/projectSearch";
 import { ProjectsFilterBar } from "./ProjectsFilterBar";
@@ -23,7 +23,7 @@ function ProjectCard({ p, unread }: { p: ProjectCardView; unread: number }) {
     <Link href={`/projects/${p.id}`} className="mb-3 block rounded-2xl border border-(--color-brand-line) bg-white p-3.5">
       <div className="mb-2 flex flex-wrap items-center gap-1.5">
         {p.stage === "paused"
-          ? <Pill label="一時停止中" color="#9A6612" bg="#FCF2DF" />
+          ? <Pill label="停止中" color="#9A6612" bg="#FCF2DF" />
           : <Pill label={p.stage === "recruiting" ? "募集中" : "選定済み"} color="#1657C9" bg="#E8F0FE" />}
         <Pill label={p.jobType === "contract" ? "請負" : "応援"} color={p.jobType === "contract" ? "#6D4AC4" : "#1657C9"} bg={p.jobType === "contract" ? "#EEE9FA" : "#E8F0FE"} />
         <Pill label={p.payType === "progress" ? "出来高" : "一括"} color={p.payType === "progress" ? "#C79A2E" : "#5B6473"} bg={p.payType === "progress" ? "#FBF2D9" : "#EEF1F5"} />
@@ -53,7 +53,7 @@ function ProjectCard({ p, unread }: { p: ProjectCardView; unread: number }) {
 export default async function ProjectsTab({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const filter = parseProjectFilter(await searchParams);
   const { self, companyId } = await loadCompanyPageData();
-  const [{ cards: projects, total }, unreadChats, ownPaused] = await Promise.all([searchProjects(filter, companyId), loadUnreadChats(), listOwnPausedProjects(companyId)]);
+  const [{ cards: projects, total }, unreadChats, ownProjects] = await Promise.all([searchProjects(filter, companyId), loadUnreadChats(), listOwnActiveProjects(companyId)]);
   const unreadByProject = new Map<string, number>();
   for (const c of unreadChats) unreadByProject.set(c.projectId, (unreadByProject.get(c.projectId) ?? 0) + c.count);
   const canPost = self?.status === "active";
@@ -70,12 +70,13 @@ export default async function ProjectsTab({ searchParams }: { searchParams: Prom
           案件の投稿（発注）は本部の承認後に可能になります。
         </div>
       )}
-      {ownPaused.length > 0 && (
-        <div className="mb-3">
-          <div className="mb-1.5 text-[12px] font-bold text-(--color-brand-amber)">一時停止中の自社案件（{ownPaused.length}）</div>
-          {ownPaused.map((p) => <ProjectCard key={p.id} p={p} unread={unreadByProject.get(p.id) ?? 0} />)}
+      {ownProjects.length > 0 && (
+        <div className="mb-4">
+          <div className="mb-1.5 text-[12.5px] font-bold text-(--color-brand-ink)">自社が投稿した案件（{ownProjects.length}）</div>
+          {ownProjects.map((p) => <ProjectCard key={p.id} p={p} unread={unreadByProject.get(p.id) ?? 0} />)}
         </div>
       )}
+      <div className="mb-1.5 text-[12.5px] font-bold text-(--color-brand-ink)">募集中の案件（応募できる案件）</div>
       <ProjectsFilterBar filter={filter} total={total} />
       {projects.length === 0 ? (
         <div className="rounded-2xl border border-(--color-brand-line) bg-white p-6 text-center text-[13px] text-(--color-brand-sub)">

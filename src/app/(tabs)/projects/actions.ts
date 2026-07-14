@@ -141,12 +141,18 @@ export async function withdrawApplicationAction(projectId: string): Promise<Proj
 
 /** 掲載の一時停止／再開／削除（元請本人のみ）。削除は選定済み（取引中）には不可。 */
 export async function setListingStateAction(projectId: string, op: "pause" | "resume" | "close"): Promise<ProjectActionResult> {
-  const container = await getContainer();
-  const result = await container.projectService.setListingState(container.actingCompanyId, ProjectId(projectId), op);
-  if (!result.ok) return { ok: false, error: result.error.message };
-  revalidatePath(`/projects/${projectId}`);
-  revalidatePath("/projects");
-  return { ok: true };
+  try {
+    const container = await getContainer();
+    const result = await container.projectService.setListingState(container.actingCompanyId, ProjectId(projectId), op);
+    if (!result.ok) return { ok: false, error: result.error.message };
+    revalidatePath(`/projects/${projectId}`);
+    revalidatePath("/projects");
+    return { ok: true };
+  } catch (e) {
+    // 0012 未適用（stage の check 制約違反）などの想定外エラーも画面を落とさず案内する。
+    const msg = e instanceof Error ? e.message : "操作に失敗しました";
+    return { ok: false, error: /stage/i.test(msg) ? "案件状態の更新に失敗しました（マイグレーション 0012 未適用の可能性）" : `操作に失敗しました: ${msg}` };
+  }
 }
 
 /** 選定（この会社に依頼）。元請が応募者を選び、取引を生成する。 */
