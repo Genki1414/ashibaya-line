@@ -5,6 +5,7 @@ import { currentCompanyId, getDb } from "@/server/acting";
 import { chatAvailable, CHAT_BUCKET } from "@/server/chatData";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { rowToProject, type ProjectRow } from "@/infra/supabase/mappers";
+import { sendPushToCompany } from "@/server/push";
 
 export interface ChatActionResult {
   ok: boolean;
@@ -66,6 +67,13 @@ export async function sendMessageAction(
   }
   const { error } = await supabase.from("messages").insert(row);
   if (error) return { ok: false, error: `送信に失敗しました: ${error.message}` };
+
+  // 相手（元請↔協力の反対側）へプッシュ通知。同一チャットは tag で上書き。
+  const recipient = role === "prime" ? partnerCompanyId : primeId;
+  const preview = body ? (body.length > 40 ? body.slice(0, 40) + "…" : body) : "📎 添付ファイル";
+  await sendPushToCompany(recipient, {
+    title: `新着メッセージ｜${projectName}`, body: preview, url: `/projects/${projectId}/chat/${partnerCompanyId}`, tag: `chat-${chatKey}`,
+  });
 
   revalidatePath(`/projects/${projectId}/chat/${partnerCompanyId}`);
   return { ok: true };

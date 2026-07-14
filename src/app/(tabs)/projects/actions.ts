@@ -9,6 +9,7 @@ import { applyToProject, withdrawApplication, pauseProject, resumeProject, close
 import { CompanyId, ProjectId } from "@/domain/shared";
 import { projectToRow, rowToProject, type ProjectRow } from "@/infra/supabase/mappers";
 import type { ClosingDay, JobType, PayTerm, PayType } from "@/domain/transaction";
+import { sendPushToCompany } from "@/server/push";
 
 export interface ProjectActionResult {
   readonly ok: boolean;
@@ -116,6 +117,10 @@ export async function applyAction(projectId: string): Promise<ProjectActionResul
 
   const { error } = await admin.from("projects").update({ ...projectToRow(applied.value), updated_at: new Date().toISOString() }).eq("id", projectId);
   if (error) return { ok: false, error: `応募に失敗しました: ${error.message}` };
+  // 元請へプッシュ通知（未設定・購読なしなら静かに無視）。
+  await sendPushToCompany(project.primeId as unknown as string, {
+    title: "新しい応募", body: `「${project.name}」に応募がありました`, url: `/projects/${projectId}`, tag: `apply-${projectId}`,
+  });
   revalidatePath(`/projects/${projectId}`);
   revalidatePath("/projects");
   return { ok: true };
@@ -208,6 +213,11 @@ export async function selectPartnerAction(projectId: string, partnerId: string):
   } catch {
     // Supabase未接続・service_role未設定などではスナップショットのみスキップ。
   }
+
+  // 選定された協力会社へプッシュ通知。
+  await sendPushToCompany(partnerId, {
+    title: "選定されました", body: `「${result.data.projectName}」で選定されました。取引を開始してください`, url: `/transactions/${result.data.id}`, tag: `select-${result.data.id}`,
+  });
 
   revalidatePath(`/projects/${projectId}`);
   revalidatePath("/projects");
