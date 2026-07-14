@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { getContainer } from "@/server/container";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { canTransact } from "@/domain/company";
-import { applyToProject } from "@/domain/project";
+import { applyToProject, withdrawApplication } from "@/domain/project";
 import { CompanyId, ProjectId } from "@/domain/shared";
 import { projectToRow, rowToProject, type ProjectRow } from "@/infra/supabase/mappers";
 import type { ClosingDay, JobType, PayTerm, PayType } from "@/domain/transaction";
@@ -116,6 +116,34 @@ export async function applyAction(projectId: string): Promise<ProjectActionResul
 
   const { error } = await admin.from("projects").update({ ...projectToRow(applied.value), updated_at: new Date().toISOString() }).eq("id", projectId);
   if (error) return { ok: false, error: `応募に失敗しました: ${error.message}` };
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath("/projects");
+  return { ok: true };
+}
+
+/** 応募の取り消し（応募会社本人）。応募者判定は domain 側で行い、第三者は取り消せない。
+ *  応募者は元請でないため、案件の応募者更新は service_role で行う（RLS は厳格なまま）。 */
+export async function withdrawApplicationAction(projectId: string): Promise<ProjectActionResult> {
+  const container = await getContainer();
+  const companyId = container.actingCompanyId;
+  const admin = createAdminClient();
+  const { data } = await admin.from("projects").select("state").eq("id", projectId).maybeSingle();
+  if (!data) return { ok: false, error: "案件が見つかりません" };
+  const project = rowToProject(data as unknown as ProjectRow);
+  const res = withdrawApplication(project, CompanyId(companyId));
+  if (!res.ok) return { ok: false, error: res.error.message };
+  const { error } = await admin.from("projects").update({ ...projectToRow(res.value), updated_at: new Date().toISOString() }).eq("id", projectId);
+  if (error) return { ok: false, error: `応募の取り消しに失敗しました: ${error.message}` };
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath("/projects");
+  return { ok: true };
+}
+
+/** 掲載の一時停止／再開／削除（元請本人のみ）。削除は選定済み（取引中）には不可。 */
+export async function setListingStateAction(projectId: string, op: "pause" | "resume" | "close"): Promise<ProjectActionResult> {
+  const container = await getContainer();
+  const result = await container.projectService.setListingState(container.actingCompanyId, ProjectId(projectId), op);
+  if (!result.ok) return { ok: false, error: result.error.message };
   revalidatePath(`/projects/${projectId}`);
   revalidatePath("/projects");
   return { ok: true };

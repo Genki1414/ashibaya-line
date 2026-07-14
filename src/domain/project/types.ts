@@ -1,7 +1,8 @@
 import { CompanyId, IsoDate, Money, ProjectId } from "../shared";
 import { ClosingDay, JobType, PayTerm, PayType, PhaseSchedule } from "../transaction";
 
-export type ProjectStage = "recruiting" | "matched";
+/** recruiting=募集中, paused=一時停止, matched=選定済み, closed=削除（掲載終了）。 */
+export type ProjectStage = "recruiting" | "paused" | "matched" | "closed";
 
 export interface Project {
   readonly id: ProjectId;

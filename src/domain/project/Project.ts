@@ -107,6 +107,12 @@ export function editProject(project: Project, input: EditProjectInput): Result<P
 }
 
 export function applyToProject(project: Project, partnerId: CompanyId): Result<Project> {
+  if (project.stage === "paused") {
+    return err(new DomainError("PROJECT_PAUSED", "この案件は現在、募集を一時停止しています"));
+  }
+  if (project.stage === "closed") {
+    return err(new DomainError("PROJECT_CLOSED", "この案件は掲載を終了しています"));
+  }
   if (project.stage !== "recruiting") {
     return err(new DomainError("PROJECT_NOT_RECRUITING", "この案件はすでに選定済みです"));
   }
@@ -117,6 +123,44 @@ export function applyToProject(project: Project, partnerId: CompanyId): Result<P
     return err(new DomainError("ALREADY_APPLIED", "すでに応募済みです"));
   }
   return ok({ ...project, applicantIds: [...project.applicantIds, partnerId] });
+}
+
+/** 応募の取り消し（応募した協力会社本人のみ）。選定前（募集中・一時停止中）のみ可能。 */
+export function withdrawApplication(project: Project, partnerId: CompanyId): Result<Project> {
+  if (project.stage === "matched") {
+    return err(new DomainError("PROJECT_MATCHED", "選定済みのため応募を取り消せません"));
+  }
+  if (!project.applicantIds.includes(partnerId)) {
+    return err(new DomainError("NOT_APPLIED", "この案件に応募していません"));
+  }
+  return ok({ ...project, applicantIds: project.applicantIds.filter((a) => a !== partnerId) });
+}
+
+/** 掲載の一時停止（元請）。募集中のみ。停止中は検索・応募不可、応募済みの情報は保持。 */
+export function pauseProject(project: Project): Result<Project> {
+  if (project.stage !== "recruiting") {
+    return err(new DomainError("NOT_RECRUITING", "募集中の案件のみ一時停止できます"));
+  }
+  return ok({ ...project, stage: "paused" });
+}
+
+/** 掲載の再開（元請）。一時停止中のみ。 */
+export function resumeProject(project: Project): Result<Project> {
+  if (project.stage !== "paused") {
+    return err(new DomainError("NOT_PAUSED", "一時停止中の案件のみ再開できます"));
+  }
+  return ok({ ...project, stage: "recruiting" });
+}
+
+/** 案件の削除（元請）。選定済みは取引があるため削除不可。論理削除（stage=closed）で一覧から消す。 */
+export function closeProject(project: Project): Result<Project> {
+  if (project.stage === "matched") {
+    return err(new DomainError("PROJECT_MATCHED", "選定済み（取引中）の案件は削除できません"));
+  }
+  if (project.stage === "closed") {
+    return err(new DomainError("ALREADY_CLOSED", "この案件はすでに削除されています"));
+  }
+  return ok({ ...project, stage: "closed" });
 }
 
 /** 応援＝日額×募集人数（未定なら2名換算）、請負＝請負金額そのまま（元プロトタイプの計算式を踏襲）。 */

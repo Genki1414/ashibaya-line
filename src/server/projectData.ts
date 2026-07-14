@@ -101,6 +101,19 @@ export async function searchProjects(filter: ProjectFilter, myCompanyId: string 
   return { cards, total: count ?? cards.length };
 }
 
+/** 自社が元請の「一時停止中」案件（検索には出ないため、再開/削除用に一覧の先頭で見せる）。 */
+export async function listOwnPausedProjects(companyId: string | null): Promise<ProjectCardView[]> {
+  if (!companyId) return [];
+  const supabase = await createClient();
+  const [{ data: projectRows }, { data: companyRows }] = await Promise.all([
+    supabase.from("projects").select("state").eq("prime_id", companyId).eq("stage", "paused").order("created_at", { ascending: false }),
+    supabase.from("companies").select("*"),
+  ]);
+  const projects = (projectRows ?? []).map((r) => rowToProject(r as unknown as ProjectRow));
+  const primeById = new Map((companyRows ?? []).map((r) => rowToCompany(r as unknown as CompanyRow)).map((c) => [c.id, c]));
+  return projects.map((p) => toCard(p, primeById, companyId));
+}
+
 export async function listProjects(myCompanyId: string | null): Promise<ProjectCardView[]> {
   const supabase = await createClient();
   const [{ data: projectRows }, { data: companyRows }] = await Promise.all([

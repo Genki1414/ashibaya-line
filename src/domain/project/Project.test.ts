@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CompanyId, ProjectId, unwrap } from "../shared";
-import { applyToProject, contractAmount, editProject, postProject } from "./Project";
+import { applyToProject, withdrawApplication, pauseProject, resumeProject, closeProject, contractAmount, editProject, postProject } from "./Project";
 
 const PRIME = CompanyId("A");
 const PARTNER_B = CompanyId("B");
@@ -128,5 +128,46 @@ describe("Project", () => {
   it("rejects an invalid headcount on edit", () => {
     const project = post();
     expect(editProject(project, { ...editInput, need: 0 }).ok).toBe(false);
+  });
+});
+
+describe("応募取消・掲載一時停止・削除", () => {
+  it("応募会社は応募を取り消せる（本人のみ・選定前）", () => {
+    const applied = unwrap(applyToProject(post(), PARTNER_B));
+    const withdrawn = unwrap(withdrawApplication(applied, PARTNER_B));
+    expect(withdrawn.applicantIds).toEqual([]);
+    // 取消後は再応募できる
+    expect(unwrap(applyToProject(withdrawn, PARTNER_B)).applicantIds).toEqual([PARTNER_B]);
+  });
+  it("応募していない会社は取り消せない（第三者拒否）", () => {
+    const applied = unwrap(applyToProject(post(), PARTNER_B));
+    expect(withdrawApplication(applied, PARTNER_C).ok).toBe(false);
+  });
+  it("選定済み（matched）は応募取消できない", () => {
+    const matched = { ...post(), stage: "matched" as const, applicantIds: [PARTNER_B] };
+    expect(withdrawApplication(matched, PARTNER_B).ok).toBe(false);
+  });
+
+  it("募集中→一時停止→再開できる。停止中は応募不可", () => {
+    const paused = unwrap(pauseProject(post()));
+    expect(paused.stage).toBe("paused");
+    expect(applyToProject(paused, PARTNER_B).ok).toBe(false); // 停止中は応募不可
+    const resumed = unwrap(resumeProject(paused));
+    expect(resumed.stage).toBe("recruiting");
+  });
+  it("一時停止中でも応募済みの取消はできる", () => {
+    const applied = unwrap(applyToProject(post(), PARTNER_B));
+    const paused = unwrap(pauseProject(applied));
+    expect(unwrap(withdrawApplication(paused, PARTNER_B)).applicantIds).toEqual([]);
+  });
+  it("削除（closed）できる。選定済みは削除不可", () => {
+    expect(unwrap(closeProject(post())).stage).toBe("closed");
+    const matched = { ...post(), stage: "matched" as const };
+    expect(closeProject(matched).ok).toBe(false);
+  });
+  it("再開は一時停止中のみ、一時停止は募集中のみ", () => {
+    expect(resumeProject(post()).ok).toBe(false); // 募集中は再開不可
+    const paused = unwrap(pauseProject(post()));
+    expect(pauseProject(paused).ok).toBe(false); // 停止中は再度停止不可
   });
 });
