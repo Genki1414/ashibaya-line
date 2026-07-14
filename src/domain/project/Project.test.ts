@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CompanyId, ProjectId, unwrap } from "../shared";
-import { applyToProject, withdrawApplication, pauseProject, resumeProject, closeProject, contractAmount, editProject, postProject } from "./Project";
+import { applyToProject, withdrawApplication, pauseProject, resumeProject, closeProject, grantDisclosure, revokeDisclosure, canViewRequirements, contractAmount, editProject, postProject } from "./Project";
 
 const PRIME = CompanyId("A");
 const PARTNER_B = CompanyId("B");
@@ -169,5 +169,30 @@ describe("応募取消・掲載一時停止・削除", () => {
     expect(resumeProject(post()).ok).toBe(false); // 募集中は再開不可
     const paused = unwrap(pauseProject(post()));
     expect(pauseProject(paused).ok).toBe(false); // 停止中は再度停止不可
+  });
+});
+
+describe("募集要項の開示（応募者単位の許可制）", () => {
+  it("既定は非開示。元請のみ閲覧可、他社は不可", () => {
+    const p = post();
+    expect(canViewRequirements(p, "A")).toBe(true); // 元請
+    expect(canViewRequirements(p, "B")).toBe(false); // 応募/他社
+    expect(canViewRequirements(p, null)).toBe(false); // 未ログイン
+  });
+  it("元請が許可した会社は閲覧可、取消で不可に戻る", () => {
+    const granted = unwrap(grantDisclosure(post(), PARTNER_B));
+    expect(granted.disclosedTo).toContain(PARTNER_B);
+    expect(canViewRequirements(granted, "B")).toBe(true);
+    expect(canViewRequirements(granted, "C")).toBe(false);
+    const revoked = unwrap(revokeDisclosure(granted, PARTNER_B));
+    expect(canViewRequirements(revoked, "B")).toBe(false);
+  });
+  it("重複許可はべき等", () => {
+    const once = unwrap(grantDisclosure(post(), PARTNER_B));
+    const twice = unwrap(grantDisclosure(once, PARTNER_B));
+    expect(twice.disclosedTo.filter((c) => c === PARTNER_B)).toHaveLength(1);
+  });
+  it("選定会社は自動で閲覧可（isSelectedPartner）", () => {
+    expect(canViewRequirements(post(), "B", true)).toBe(true);
   });
 });

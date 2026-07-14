@@ -22,7 +22,8 @@ import { loadProjectDocuments } from "@/server/projectDocs";
 import { currentCompanyId } from "@/server/acting";
 import { companyCreditLevel, companyFactsOf, type Company } from "@/domain/company";
 import { continuousCount } from "@/domain/credit";
-import { ApplyButton, SelectButton, WithdrawButton, ListingButton } from "./buttons";
+import { ApplyButton, SelectButton, WithdrawButton, ListingButton, DisclosureToggle } from "./buttons";
+import { canViewRequirements } from "@/domain/project";
 
 export const dynamic = "force-dynamic";
 
@@ -64,6 +65,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
   // 応募可否：元請ではなく、まだ応募していない募集中案件のみ。受注可否（本部承認）は Server Action 側でも再確認。
   const canApply = Boolean(myCompanyId) && !isPrime && !alreadyApplied && recruiting;
+  // 詳しい募集要項の閲覧可否（元請・選定会社・元請が許可した応募会社のみ）。
+  const canSeeRequirements = canViewRequirements(project, myCompanyId);
 
   const today = new Date().toISOString().slice(0, 10);
   const primeFacts = prime ? companyFactsOf(prime, false, today) : null;
@@ -152,9 +155,22 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           )}
         </div>
 
-        {/* 募集要項 */}
+        {/* 募集要項（詳細は元請の許可制。未許可の会社には隠す） */}
         <div>
           <SectionLabel text="募集要項" />
+          {!canSeeRequirements ? (
+            <Card>
+              <div className="flex items-start gap-2.5">
+                <span className="text-[20px]" aria-hidden>🔒</span>
+                <div className="text-[12.5px] leading-relaxed text-(--color-brand-sub)">
+                  詳しい募集要項（現場住所・工期・仕事内容など）は、<span className="font-bold text-(--color-brand-ink)">元請が許可した会社のみ</span>に表示されます。
+                  {!alreadyApplied && recruiting && <><br />まず応募してください。元請が確認し、許可すると詳細が表示されます。</>}
+                  {alreadyApplied && (recruiting || paused) && <><br />応募済みです。元請の許可をお待ちください。</>}
+                </div>
+              </div>
+            </Card>
+          ) : (
+          <>
           <Card className="!py-1">
             <InfoRow label="種別" value={JOB_LABEL[project.jobType] ?? project.jobType} />
             <InfoRow label="地域" value={project.region} />
@@ -181,6 +197,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             <div className="mt-2 rounded-2xl border border-(--color-brand-line) bg-white p-3.5 text-[13px] leading-relaxed text-(--color-brand-ink)">
               {project.workDescription}
             </div>
+          )}
+          </>
           )}
         </div>
 
@@ -235,8 +253,13 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                           <span className="rounded-full bg-(--color-brand-red) px-1.5 py-0.5 text-[10.5px] font-bold text-white">{unreadFor(a.id)}</span>
                         )}
                       </Link>
-                      {recruiting && <SelectButton projectId={project.id as unknown as string} partnerId={a.id} />}
+                      {recruiting && <SelectButton projectId={pid} partnerId={a.id} />}
                     </div>
+                    {(recruiting || paused) && (
+                      <div className="mt-2">
+                        <DisclosureToggle projectId={pid} partnerId={a.id} granted={project.disclosedTo.some((c) => (c as unknown as string) === a.id)} />
+                      </div>
+                    )}
                   </Card>
                 ))}
               </div>

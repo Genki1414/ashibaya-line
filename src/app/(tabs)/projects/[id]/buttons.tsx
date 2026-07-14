@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { applyAction, selectPartnerAction, withdrawApplicationAction, setListingStateAction } from "../actions";
+import { applyAction, selectPartnerAction, withdrawApplicationAction, setListingStateAction, setDisclosureAction } from "../actions";
 
 function Toast({ msg, ok }: { msg: string; ok: boolean }) {
   return (
@@ -51,6 +51,44 @@ export function WithdrawButton({ projectId }: { projectId: string }) {
         応募を取り消す
       </button>
       {open && <ConfirmOverlay title="応募を取り消しますか？" message="この案件への応募を取り消します。あとで募集中であれば再度応募できます。" pending={pending} onConfirm={run} onClose={() => setOpen(false)} danger confirmLabel="取り消す" />}
+      {toast && <Toast msg={toast.msg} ok={toast.ok} />}
+    </>
+  );
+}
+
+/** 応募会社ごとに募集要項の閲覧を許可／取消（元請）。 */
+export function DisclosureToggle({ projectId, partnerId, granted }: { projectId: string; partnerId: string; granted: boolean }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+  const [open, setOpen] = useState(false);
+  const show = (msg: string, ok: boolean) => { setToast({ msg, ok }); setTimeout(() => setToast(null), 2800); };
+  const run = () =>
+    start(async () => {
+      const r = await setDisclosureAction(projectId, partnerId, !granted);
+      if (r.ok) { setOpen(false); show(granted ? "募集要項の許可を取り消しました" : "募集要項を開示しました", true); router.refresh(); }
+      else show(r.error ?? "失敗しました", false);
+    });
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        disabled={pending}
+        className={`rounded-xl px-3 py-2 text-[13px] font-bold disabled:opacity-50 ${granted ? "border border-(--color-brand-green) bg-(--color-brand-green-soft) text-(--color-brand-green)" : "border border-(--color-brand-blue) text-(--color-brand-blue)"}`}
+      >
+        {granted ? "募集要項 開示中" : "募集要項を開示"}
+      </button>
+      {open && (
+        <ConfirmOverlay
+          title={granted ? "募集要項の開示を取り消しますか？" : "この会社に募集要項を開示しますか？"}
+          message={granted ? "この会社は詳しい募集要項（現場住所・工期・仕事内容など）を見られなくなります。" : "この会社に、詳しい募集要項（現場住所・工期・仕事内容など）を公開します。"}
+          pending={pending}
+          onConfirm={run}
+          onClose={() => setOpen(false)}
+          danger={granted}
+          confirmLabel={granted ? "取り消す" : "開示する"}
+        />
+      )}
       {toast && <Toast msg={toast.msg} ok={toast.ok} />}
     </>
   );

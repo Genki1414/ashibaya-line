@@ -7,6 +7,7 @@ import { searchProjects, listOwnActiveProjects, type ProjectCardView } from "@/s
 import { loadUnreadChats } from "@/server/chatData";
 import { parseProjectFilter } from "@/domain/projectSearch";
 import { ProjectsFilterBar } from "./ProjectsFilterBar";
+import { CollapsibleSection } from "./CollapsibleSection";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "案件" };
@@ -71,10 +72,9 @@ export default async function ProjectsTab({ searchParams }: { searchParams: Prom
         </div>
       )}
       {ownProjects.length > 0 && (
-        <div className="mb-4">
-          <div className="mb-1.5 text-[12.5px] font-bold text-(--color-brand-ink)">自社が投稿した案件（{ownProjects.length}）</div>
+        <CollapsibleSection title="自社が投稿した案件" count={ownProjects.length}>
           {ownProjects.map((p) => <ProjectCard key={p.id} p={p} unread={unreadByProject.get(p.id) ?? 0} />)}
-        </div>
+        </CollapsibleSection>
       )}
       <div className="mb-1.5 text-[12.5px] font-bold text-(--color-brand-ink)">募集中の案件（応募できる案件）</div>
       <ProjectsFilterBar filter={filter} total={total} />

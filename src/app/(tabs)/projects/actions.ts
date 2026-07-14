@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { getContainer } from "@/server/container";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { canTransact } from "@/domain/company";
-import { applyToProject, withdrawApplication, pauseProject, resumeProject, closeProject } from "@/domain/project";
+import { applyToProject, withdrawApplication, pauseProject, resumeProject, closeProject, grantDisclosure, revokeDisclosure } from "@/domain/project";
 import { CompanyId, ProjectId } from "@/domain/shared";
 import { projectToRow, rowToProject, type ProjectRow } from "@/infra/supabase/mappers";
 import type { ClosingDay, JobType, PayTerm, PayType } from "@/domain/transaction";
@@ -166,6 +166,27 @@ export async function setListingStateAction(projectId: string, op: "pause" | "re
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return { ok: false, error: `操作に失敗しました: ${msg}` };
+  }
+}
+
+/** 募集要項の閲覧許可を応募会社ごとに付与／取消（元請本人のみ）。書き込みは service_role。 */
+export async function setDisclosureAction(projectId: string, partnerId: string, grant: boolean): Promise<ProjectActionResult> {
+  try {
+    const container = await getContainer();
+    const me = container.actingCompanyId as unknown as string;
+    const admin = createAdminClient();
+    const { data } = await admin.from("projects").select("state").eq("id", projectId).maybeSingle();
+    if (!data) return { ok: false, error: "案件が見つかりません" };
+    const project = rowToProject(data as unknown as ProjectRow);
+    if ((project.primeId as unknown as string) !== me) return { ok: false, error: "自社が投稿した案件のみ操作できます" };
+    const res = grant ? grantDisclosure(project, CompanyId(partnerId)) : revokeDisclosure(project, CompanyId(partnerId));
+    if (!res.ok) return { ok: false, error: res.error.message };
+    const { error } = await admin.from("projects").update({ ...projectToRow(res.value), updated_at: new Date().toISOString() }).eq("id", projectId);
+    if (error) return { ok: false, error: `操作に失敗しました: ${error.message}` };
+    revalidatePath(`/projects/${projectId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: `操作に失敗しました: ${e instanceof Error ? e.message : String(e)}` };
   }
 }
 
