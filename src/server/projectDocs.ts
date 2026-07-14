@@ -340,6 +340,8 @@ export async function snapshotForTransaction(projectId: string, transactionId: s
 
 // ── 取引詳細：成立時点の資料＋成立後に追加された資料 ──
 export type TxDocStatus = "current" | "deleted";
+/** before=成立前からの資料（スナップショット）、after=成立後に追加、migrated=既存取引で成立時点未確認。 */
+export type TxDocOrigin = "before" | "after" | "migrated";
 export interface TxDocView {
   fileName: string;
   documentTypeLabel: string;
@@ -351,77 +353,89 @@ export interface TxDocView {
   previewable: boolean;
   isPdf: boolean;
   isHeic: boolean;
-  /** 取引成立前からの資料か（スナップショット由来）／成立後に追加されたか。 */
-  origin: "before" | "after";
+  origin: TxDocOrigin;
   status: TxDocStatus;
 }
 
-export async function loadTransactionDocuments(transactionId: string, viewerCompanyId: string | null): Promise<{ ok: boolean; docs: TxDocView[] }> {
+function rowToTxDoc(r: DocRow, url: string | null, origin: TxDocOrigin, status: TxDocStatus): TxDocView {
+  return {
+    fileName: r.file_name,
+    documentTypeLabel: DOCUMENT_TYPE_LABEL[r.document_type] ?? r.document_type,
+    visibility: r.visibility,
+    description: r.description,
+    fileSize: r.file_size,
+    url,
+    isImage: isImage(r.file_name), previewable: isPreviewableImage(r.file_name), isPdf: isPdf(r.file_name), isHeic: isHeic(r.file_name),
+    origin,
+    status,
+  };
+}
+
+/**
+ * 取引詳細の案件資料。
+ * - スナップショットがある取引：成立前からの資料（削除済みでも証拠として参照可）＋成立後に追加された資料。
+ * - スナップショットが無い既存取引（legacy）：現在共有中の資料を「成立時点の共有状況は未確認」として表示。
+ *   ※既存取引の資料を「成立前からの資料」と誤認させないため、before/after には振り分けない。
+ * 取引当事者（元請/協力）のみ。旧 Transaction state 形式でも tx 行の列だけを読むため落ちない。
+ */
+export async function loadTransactionDocuments(transactionId: string, viewerCompanyId: string | null): Promise<{ ok: boolean; legacy: boolean; docs: TxDocView[] }> {
   const admin = adminOrNull();
-  if (!admin || !viewerCompanyId) return { ok: false, docs: [] };
+  if (!admin || !viewerCompanyId) return { ok: false, legacy: false, docs: [] };
   const { data: txRow } = await admin.from("transactions").select("project_id, prime_id, partner_id, created_at").eq("id", transactionId).maybeSingle();
-  if (!txRow) return { ok: false, docs: [] };
+  if (!txRow) return { ok: false, legacy: false, docs: [] };
   const tx = txRow as { project_id: string | null; prime_id: string; partner_id: string; created_at: string };
   const isPrime = viewerCompanyId === tx.prime_id;
   const isPartner = viewerCompanyId === tx.partner_id;
-  if (!isPrime && !isPartner) return { ok: false, docs: [] }; // 取引当事者のみ
+  if (!isPrime && !isPartner) return { ok: false, legacy: false, docs: [] }; // 取引当事者のみ
   const tier: ViewerTier = isPrime ? "prime" : "selected";
 
-  // 成立時点のスナップショット。
   const { data: snapRows } = await admin.from("transaction_document_snapshots").select("*").eq("transaction_id", transactionId);
   const snaps = (snapRows ?? []) as {
     original_document_id: string | null; file_name: string; document_type: string; visibility: DocVisibility;
     description: string; file_size: number; storage_path: string;
   }[];
 
-  // 現在の案件資料（削除済み含む）。成立後に追加された分の判定と、現況ステータスに使う。
+  // 現在の案件資料（削除済み含む）。
+  const currentRows: DocRow[] = [];
   const currentById = new Map<string, DocRow>();
-  let afterRows: DocRow[] = [];
   if (tx.project_id) {
     const { data: curRows } = await admin.from("project_documents").select("*").eq("project_id", tx.project_id);
-    for (const r of (curRows ?? []) as DocRow[]) currentById.set(r.id, r);
-    const snapIds = new Set(snaps.map((s) => s.original_document_id));
-    afterRows = ((curRows ?? []) as DocRow[]).filter(
-      (r) => !snapIds.has(r.id) && r.deleted_at == null && r.created_at > tx.created_at && canViewDocument(r.visibility, tier),
-    );
+    for (const r of (curRows ?? []) as DocRow[]) { currentRows.push(r); currentById.set(r.id, r); }
   }
 
-  const paths = [...snaps.map((s) => s.storage_path), ...afterRows.map((r) => r.storage_path)];
-  const urls = await signedMap(admin, paths);
+  const legacy = snaps.length === 0;
+  let docs: TxDocView[];
 
-  const beforeDocs: TxDocView[] = snaps.map((s) => {
-    const cur = s.original_document_id ? currentById.get(s.original_document_id) : undefined;
-    const status: TxDocStatus = cur && cur.deleted_at == null ? "current" : "deleted";
-    return {
-      fileName: s.file_name,
-      documentTypeLabel: DOCUMENT_TYPE_LABEL[s.document_type] ?? s.document_type,
-      visibility: s.visibility,
-      description: s.description,
-      fileSize: s.file_size,
-      url: urls.get(s.storage_path) ?? null,
-      isImage: isImage(s.file_name), previewable: isPreviewableImage(s.file_name), isPdf: isPdf(s.file_name), isHeic: isHeic(s.file_name),
-      origin: "before",
-      status,
-    };
-  });
-  const afterDocs: TxDocView[] = afterRows.map((r) => ({
-    fileName: r.file_name,
-    documentTypeLabel: DOCUMENT_TYPE_LABEL[r.document_type] ?? r.document_type,
-    visibility: r.visibility,
-    description: r.description,
-    fileSize: r.file_size,
-    url: urls.get(r.storage_path) ?? null,
-    isImage: isImage(r.file_name), previewable: isPreviewableImage(r.file_name), isPdf: isPdf(r.file_name), isHeic: isHeic(r.file_name),
-    origin: "after",
-    status: "current",
-  }));
+  if (legacy) {
+    // 既存取引：現在公開中の閲覧可能な資料を「成立時点未確認」として表示（before/after に分けない）。
+    const visible = currentRows.filter((r) => r.deleted_at == null && canViewDocument(r.visibility, tier));
+    const urls = await signedMap(admin, visible.map((r) => r.storage_path));
+    docs = visible.map((r) => rowToTxDoc(r, urls.get(r.storage_path) ?? null, "migrated", "current"));
+  } else {
+    const snapIds = new Set(snaps.map((s) => s.original_document_id));
+    const afterRows = currentRows.filter((r) => !snapIds.has(r.id) && r.deleted_at == null && r.created_at > tx.created_at && canViewDocument(r.visibility, tier));
+    const urls = await signedMap(admin, [...snaps.map((s) => s.storage_path), ...afterRows.map((r) => r.storage_path)]);
+    const before: TxDocView[] = snaps.map((s) => {
+      const cur = s.original_document_id ? currentById.get(s.original_document_id) : undefined;
+      const status: TxDocStatus = cur && cur.deleted_at == null ? "current" : "deleted";
+      return {
+        fileName: s.file_name,
+        documentTypeLabel: DOCUMENT_TYPE_LABEL[s.document_type] ?? s.document_type,
+        visibility: s.visibility, description: s.description, fileSize: s.file_size,
+        url: urls.get(s.storage_path) ?? null,
+        isImage: isImage(s.file_name), previewable: isPreviewableImage(s.file_name), isPdf: isPdf(s.file_name), isHeic: isHeic(s.file_name),
+        origin: "before", status,
+      };
+    });
+    const after = afterRows.map((r) => rowToTxDoc(r, urls.get(r.storage_path) ?? null, "after", "current"));
+    docs = [...before, ...after];
+  }
 
-  const docs = [...beforeDocs, ...afterDocs];
   // 証拠トレイル：成立済み取引の資料URL発行を監査に残す（当事者による参照の記録）。
   if (docs.length > 0 && tx.project_id) {
-    await audit(admin, "url_issued", tx.project_id, null, { transactionId, count: docs.length, viewer: viewerCompanyId });
+    await audit(admin, "url_issued", tx.project_id, null, { transactionId, count: docs.length, viewer: viewerCompanyId, legacy });
   }
-  return { ok: true, docs };
+  return { ok: true, legacy, docs };
 }
 
 export { MAX_DOC_BYTES };

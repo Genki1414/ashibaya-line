@@ -54,11 +54,14 @@ export function ProjectDocsReadonly({ docs }: { docs: ProjectDocView[] }) {
 
 const STATUS_LABEL = { current: "現在公開中", deleted: "現在は削除済み" } as const;
 
-/** 取引詳細の資料セクション。成立前からの資料／成立後に追加された資料を分けて表示。 */
+/** 取引詳細の資料セクション。成立前からの資料／成立後に追加／既存取引の移行資料を分けて表示。常に表示。 */
 export function TxDocsSection({ docs }: { docs: TxDocView[] }) {
-  if (docs.length === 0) return null;
+  if (docs.length === 0) {
+    return <div className="rounded-2xl border border-(--color-brand-line) bg-white p-4 text-center text-[12.5px] text-(--color-brand-sub)">現在共有されている案件資料はありません。</div>;
+  }
   const before = docs.filter((d) => d.origin === "before");
   const after = docs.filter((d) => d.origin === "after");
+  const migrated = docs.filter((d) => d.origin === "migrated");
 
   const Row = ({ d }: { d: TxDocView }) => (
     <div className="rounded-2xl border border-(--color-brand-line) bg-white p-3">
@@ -97,6 +100,15 @@ export function TxDocsSection({ docs }: { docs: TxDocView[] }) {
         <div>
           <div className="mb-1.5 text-[12px] font-bold text-(--color-brand-faint)">取引成立後に追加された資料</div>
           <div className="space-y-2">{after.map((d, i) => <Row key={`a${i}`} d={d} />)}</div>
+        </div>
+      )}
+      {migrated.length > 0 && (
+        <div>
+          <div className="mb-1.5 text-[12px] font-bold text-(--color-brand-faint)">現在共有中の資料（成立時点の共有状況は未確認）</div>
+          <p className="mb-1.5 text-[11px] leading-relaxed text-(--color-brand-faint)">
+            この取引は資料機能の追加より前に成立したため、成立時点で共有されていたかは確認できません。現在公開中の資料を表示しています。
+          </p>
+          <div className="space-y-2">{migrated.map((d, i) => <Row key={`m${i}`} d={d} />)}</div>
         </div>
       )}
     </div>

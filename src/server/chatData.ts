@@ -106,7 +106,10 @@ export async function loadUnreadChats(): Promise<ChatUnread[]> {
   const result: ChatUnread[] = [];
   for (const chat of chats) {
     const myRole: Actor = chat.prime_id === me ? "prime" : "partner";
-    const partnerCompanyId = myRole === "prime" ? chat.partner_id : chat.prime_id;
+    // チャットの URL / chatKey は常に「協力会社ID」を使う（[companyId] は協力会社）。
+    // 表示上の相手は自分がどちら側かで変わるので別に解決する。
+    const chatPartnerId = chat.partner_id;
+    const counterpartyId = myRole === "prime" ? chat.partner_id : chat.prime_id;
     const readAt = lastRead.get(chat.key);
     const mine = messages.filter((m) => m.chat_key === chat.key && m.sender_role !== myRole);
     const unread = mine.filter((m) => !readAt || m.created_at > readAt);
@@ -114,9 +117,9 @@ export async function loadUnreadChats(): Promise<ChatUnread[]> {
     result.push({
       chatKey: chat.key,
       projectId: chat.project_id ?? chat.key.split(":")[0],
-      partnerCompanyId,
+      partnerCompanyId: chatPartnerId,
       projectName: chat.title,
-      counterpartyName: nameById.get(partnerCompanyId) ?? partnerCompanyId,
+      counterpartyName: nameById.get(counterpartyId) ?? counterpartyId,
       count: unread.length,
       lastText: unread[unread.length - 1]?.text ?? "",
     });
