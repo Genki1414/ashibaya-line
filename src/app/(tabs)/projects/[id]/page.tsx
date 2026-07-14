@@ -13,8 +13,10 @@ import {
   VerifyBadges,
   type MetricsView,
 } from "@/components/company/parts";
+import { PrimePerformanceCard } from "@/components/company/PerformancePanel";
 import { loadProjectDetail } from "@/server/projectData";
 import { loadUnreadChats } from "@/server/chatData";
+import { loadCompanyPerformance } from "@/server/performanceData";
 import { currentCompanyId } from "@/server/acting";
 import { companyCreditLevel, companyFactsOf, type Company } from "@/domain/company";
 import { continuousCount } from "@/domain/credit";
@@ -59,6 +61,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
   const today = new Date().toISOString().slice(0, 10);
   const primeFacts = prime ? companyFactsOf(prime, false, today) : null;
+  const primePerf = prime ? await loadCompanyPerformance(project.primeId as unknown as string) : null;
 
   const unreadByChatKey = new Map((await loadUnreadChats()).map((c) => [c.chatKey, c.count]));
   const unreadFor = (companyId: string) => unreadByChatKey.get(`${project.id as unknown as string}:${companyId}`) ?? 0;
@@ -96,6 +99,13 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             </div>
             <VerifyBadges verify={prime.verify as Record<string, string>} />
           </Card>
+        )}
+        {/* 元請の客観実績（取引履歴から自動集計・編集不可）。信用レベルとは別に事実を提示。 */}
+        {primePerf && (
+          <div>
+            <SectionLabel text="元請の実績データ（事実集計）" />
+            <PrimePerformanceCard p={primePerf.asPrime} />
+          </div>
         )}
 
         {/* 募集要項 */}

@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { CompanyId, TransactionId } from "@/domain/shared";
 import { AppResult, appErr } from "@/application";
 import { getContainer, ACTING_COMPANY_COOKIE } from "@/server/container";
+import { recomputePerformance } from "@/server/performance";
 import type { Transaction } from "@/domain/transaction";
 import type { PhaseKey, ScheduleChangeInput } from "@/domain/transaction";
 
@@ -147,6 +148,15 @@ export async function runTransactionAction(input: TransactionActionInput): Promi
   }
 
   if (result.ok) {
+    // 取引完了時に、関係する2社の実績プロジェクションを再計算（差分更新＝該当社の全再計算）。
+    // 冪等なので再完了扱いになっても安全。失敗しても取引操作自体は成功として扱う。
+    if (result.data.status === "completed") {
+      try {
+        await recomputePerformance([String(result.data.primeId), String(result.data.partnerId)]);
+      } catch {
+        // Supabase未接続（デモ）やservice_role未設定などでは実績更新のみスキップ。
+      }
+    }
     revalidatePath("/transactions");
     revalidatePath(`/transactions/${input.txId}`);
   }

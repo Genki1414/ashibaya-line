@@ -7,6 +7,7 @@ import { companyCreditLevel } from "@/domain/company";
 import { signOut } from "@/app/(auth)/actions";
 import { AdminForms } from "./AdminForms";
 import { StatusButton } from "./StatusButton";
+import { RecomputeButton } from "./RecomputeButton";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "本部管理" };
@@ -19,6 +20,8 @@ interface CompanyView {
   region: string;
   level: string;
   completed: number;
+  primeCompleted: number;
+  partnerCompleted: number;
   members: string[];
   status: string;
 }
@@ -37,6 +40,15 @@ export default async function AdminPage() {
   const supabase = await createClient();
   const { data: companyRows } = await supabase.from("companies").select("*").order("created_at", { ascending: true });
   const companies = (companyRows ?? []).map((r) => rowToCompany(r as unknown as CompanyRow));
+
+  // 実績プロジェクション（元請/協力の取引完了件数などを一覧確認用に読む）。
+  const { data: perfRows } = await supabase.from("company_performance").select("company_id, as_prime, as_partner");
+  const perfById = new Map(
+    ((perfRows ?? []) as { company_id: string; as_prime: { completed?: number }; as_partner: { completed?: number } }[]).map((r) => [
+      r.company_id,
+      { prime: r.as_prime?.completed ?? 0, partner: r.as_partner?.completed ?? 0 },
+    ]),
+  );
 
   // メンバー（会社ID→メールの一覧）。auth.users は service_role でのみ引ける。
   // サービスロール鍵が未設定でもページを 500 にせず、原因を画面に表示する。
@@ -63,6 +75,8 @@ export default async function AdminPage() {
     region: c.region,
     level: companyCreditLevel(c, false),
     completed: c.metrics.completed,
+    primeCompleted: perfById.get(c.id)?.prime ?? 0,
+    partnerCompleted: perfById.get(c.id)?.partner ?? 0,
     members: membersByCompany.get(c.id) ?? [],
     status: c.status ?? "active",
   }));
@@ -93,6 +107,8 @@ export default async function AdminPage() {
 
       <AdminForms companies={views.map((v) => ({ id: v.id, name: v.name }))} />
 
+      <RecomputeButton />
+
       <h2 className="mb-2 mt-6 text-[13px] font-bold text-(--color-brand-sub)">登録会社（{views.length}）</h2>
       <div className="space-y-2">
         {views.length === 0 && (
@@ -114,6 +130,9 @@ export default async function AdminPage() {
               <span className="ml-auto text-[11.5px] text-(--color-brand-sub)">取引完了 {c.completed}</span>
             </div>
             <div className="mt-1 text-[11.5px] text-(--color-brand-sub)">{c.region || "地域未設定"}</div>
+            <div className="mt-1 text-[11.5px] text-(--color-brand-sub)">
+              実績データ：元請 完了 {c.primeCompleted}件 ／ 協力 完了 {c.partnerCompleted}件
+            </div>
             <div className="mt-1 text-[11.5px] text-(--color-brand-sub)">
               メンバー：{c.members.length > 0 ? c.members.join("、 ") : "未登録"}
             </div>
