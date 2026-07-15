@@ -2,7 +2,7 @@
 
 import { headers } from "next/headers";
 import { getAuthContext } from "@/server/auth";
-import { saveSubscription, removeSubscription, sendPushToEndpoint, pushConfigured, type SerializedSubscription } from "@/server/push";
+import { saveSubscription, removeSubscription, sendPushToEndpoint, describePushConfig, type SerializedSubscription } from "@/server/push";
 
 /** プッシュ購読を保存（ログイン中の会社・ユーザーに紐づけ）。 */
 export async function subscribeUser(sub: SerializedSubscription): Promise<{ ok: boolean; error?: string }> {
@@ -22,7 +22,8 @@ export async function unsubscribeUser(endpoint: string): Promise<{ ok: boolean }
 export async function sendTestNotification(endpoint: string): Promise<{ ok: boolean; error?: string }> {
   const ctx = await getAuthContext();
   if (!ctx.user) return { ok: false, error: "ログインが必要です" };
-  if (!pushConfigured()) return { ok: false, error: "サーバのプッシュ設定（VAPID鍵）が未設定です" };
+  const cfg = describePushConfig();
+  if (!cfg.ok) return { ok: false, error: `サーバのプッシュ設定エラー：${cfg.reason}` };
   const n = await sendPushToEndpoint(endpoint, {
     title: "テスト通知",
     body: "プッシュ通知は正常に受信できています。",

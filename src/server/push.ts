@@ -22,25 +22,38 @@ export interface PushPayload {
   icon?: string;
 }
 
-let configured: boolean | null = null;
+let vapidReady = false; // 成功だけキャッシュ（失敗はキャッシュしない＝設定修正後に自動で有効化）。
 
-/** VAPID 鍵が揃っていればプッシュ有効。初回に web-push を設定する。 */
-export function pushConfigured(): boolean {
-  if (configured !== null) return configured;
-  const pub = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-  const priv = process.env.VAPID_PRIVATE_KEY;
-  if (!pub || !priv) {
-    configured = false;
-    return false;
-  }
+/** VAPID_SUBJECT を web-push が受け付ける形（mailto: / http(s):）へ正規化する。 */
+function normalizeSubject(raw: string | undefined): string {
+  const s = (raw ?? "").trim();
+  if (!s) return "mailto:support@example.com";
+  if (/^(mailto:|https?:\/\/)/i.test(s)) return s;
+  // 「mailto:」の付け忘れ（素のメールアドレス）を吸収する。
+  if (s.includes("@")) return `mailto:${s}`;
+  return "mailto:support@example.com";
+}
+
+/** 設定状態の診断（値は返さず、何が欠けているかだけを返す）。 */
+export function describePushConfig(): { ok: boolean; reason: string } {
+  const pub = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim();
+  const priv = process.env.VAPID_PRIVATE_KEY?.trim();
+  if (!pub && !priv) return { ok: false, reason: "NEXT_PUBLIC_VAPID_PUBLIC_KEY と VAPID_PRIVATE_KEY が未設定です" };
+  if (!pub) return { ok: false, reason: "NEXT_PUBLIC_VAPID_PUBLIC_KEY が未設定です" };
+  if (!priv) return { ok: false, reason: "VAPID_PRIVATE_KEY が未設定です（この環境に反映されていない可能性）" };
   try {
-    const subject = process.env.VAPID_SUBJECT || "mailto:support@example.com";
-    webpush.setVapidDetails(subject, pub, priv);
-    configured = true;
-  } catch {
-    configured = false;
+    webpush.setVapidDetails(normalizeSubject(process.env.VAPID_SUBJECT), pub, priv);
+    vapidReady = true;
+    return { ok: true, reason: "ok" };
+  } catch (e) {
+    return { ok: false, reason: `VAPID鍵/連絡先の形式が不正です: ${e instanceof Error ? e.message : String(e)}` };
   }
-  return configured;
+}
+
+/** VAPID 鍵が揃っていればプッシュ有効。web-push を設定する（失敗はキャッシュしない）。 */
+export function pushConfigured(): boolean {
+  if (vapidReady) return true;
+  return describePushConfig().ok;
 }
 
 /** 購読を保存（端末×ブラウザ＝endpoint 一意で upsert）。 */
