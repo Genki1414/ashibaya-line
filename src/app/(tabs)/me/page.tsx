@@ -4,6 +4,7 @@ import { Card } from "@/components/company/parts";
 import { PerformanceSections } from "@/components/company/PerformancePanel";
 import { loadCompanyPageData } from "@/server/companyData";
 import { loadCompanyPerformance } from "@/server/performanceData";
+import { PushToggle } from "@/app/push/PushToggle";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "自社プロフィール" };
@@ -16,6 +17,7 @@ export default async function MeTab() {
       {self ? (
         <>
           <SelfProfileView self={self} />
+          <PushToggle />
           {perf && <PerformanceSections asPrime={perf.asPrime} asPartner={perf.asPartner} />}
         </>
       ) : (
